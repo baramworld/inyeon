@@ -318,8 +318,11 @@ nav button[hidden]{display:none}
   </div>
 
   <div class="card wide">
-    <h2>아직 반납 안 한 사람</h2>
-    <ul class="list" id="b-list"><li class="empty">모두 정산됐습니다</li></ul>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <h2 style="margin:0">아직 반납 안 한 사람</h2>
+      <button class="sm" id="b-copy">명단 복사</button>
+    </div>
+    <ul class="list" id="b-list" style="margin-top:12px"><li class="empty">모두 정산됐습니다</li></ul>
   </div>
 </section>
 
@@ -455,6 +458,39 @@ nav button[hidden]{display:none}
     <ul class="list" id="mg-list"><li class="empty">찾기를 눌러 기록을 불러오세요</li></ul>
   </div>
 
+  <div class="card wide">
+    <h2>기간별 통계</h2>
+    <div class="chips" id="st-preset">
+      <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="7">최근 7일</div>
+      <div class="chip" role="button" tabindex="0" aria-pressed="true" data-v="30">최근 30일</div>
+      <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="month">이번 달</div>
+      <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="all">전체</div>
+    </div>
+    <div class="row2" style="margin-top:12px">
+      <div><label for="st-from" style="margin-top:0">시작일</label><input id="st-from" type="date"></div>
+      <div><label for="st-to" style="margin-top:0">종료일</label><input id="st-to" type="date"></div>
+    </div>
+    <button class="go" id="st-go" style="background:var(--blue)">통계 보기</button>
+
+    <div class="stats" style="margin-top:16px">
+      <div class="stat"><div class="k">총 불출</div><div class="v num" id="st-out">0</div></div>
+      <div class="stat"><div class="k">총 사용</div><div class="v num" id="st-use">0</div></div>
+      <div class="stat"><div class="k">총 반납</div><div class="v num" id="st-back">0</div></div>
+      <div class="stat"><div class="k">전체 소진율</div><div class="v num" id="st-rate">0%</div></div>
+      <div class="stat"><div class="k">하루 평균 불출</div><div class="v num" id="st-avg">0</div></div>
+      <div class="stat"><div class="k">참여 인원</div><div class="v num" id="st-ppl">0</div></div>
+      <div class="stat"><div class="k">빨시 매입</div><div class="v num" id="st-buyq">0</div></div>
+      <div class="stat"><div class="k">매입 금액</div><div class="v num" id="st-buyw" style="color:var(--gold)">0</div></div>
+    </div>
+    <div id="st-fund" class="tiny"></div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px">
+      <span class="tiny" style="margin:0">인원별 (불출 많은 순)</span>
+      <button class="sm" id="st-copy">통계 복사</button>
+    </div>
+    <ul class="list" id="st-list"><li class="empty">기간을 고르고 통계 보기를 누르세요</li></ul>
+  </div>
+
   <div class="card">
     <h2>휴지통</h2>
     <p class="tiny" style="margin-top:0">지운 기록이 여기 남습니다. 복구를 누르면 원래 자리로 돌아갑니다.</p>
@@ -580,7 +616,7 @@ $$("nav button").forEach(b => b.addEventListener("click", () => {
   $$("main section").forEach(s => s.classList.toggle("on", s.id === b.dataset.tab));
   if (b.dataset.tab === "s-me") loadMe();
   if (b.dataset.tab === "s-board") loadBoard();
-  if (b.dataset.tab === "s-manage") { loadRecords(); loadTrash(); }
+  if (b.dataset.tab === "s-manage") { loadRecords(); loadTrash(); loadStats(); }
   window.scrollTo(0, 0);
 }));
 
@@ -739,6 +775,7 @@ async function loadBoard(){
   try {
     const b = await call("board");
     if (b.rev) lastRev = b.rev;
+    boardCache = b;
     const total = b.day.총불출량, filled = b.오늘기입;
     const pct = total > 0 ? Math.min(100, Math.round(filled / total * 100)) : (filled > 0 ? 100 : 0);
     $("#g-fill").style.width = pct + "%";
@@ -926,6 +963,109 @@ $("#ad-body").addEventListener("click", async e => {
     } else return;
     toast("처리했습니다");
   } catch(err){ toast(err.message, true); }
+});
+
+/* ===== 클립보드 ===== */
+async function copyText(text, okMsg){
+  try {
+    if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
+    else {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
+    }
+    toast(okMsg || "복사했습니다");
+  } catch(e){ toast("복사에 실패했습니다. 길게 눌러 직접 복사해주세요", true); }
+}
+
+let boardCache = null;
+
+$("#b-copy").addEventListener("click", () => {
+  if (!boardCache || !boardCache.미반납.length) return toast("복사할 명단이 없습니다", true);
+  const lines = boardCache.미반납.map(p =>
+    `${p.캐릭명} ${fmt(p.보유)}개` + (p.미반납일수 ? ` (${p.미반납일수}일째)` : "")
+  );
+  const total = boardCache.미반납.reduce((a, p) => a + p.보유, 0);
+  copyText(
+    `[빨시 미반납 명단] ${boardCache.today}\n` + lines.join("\n") +
+    `\n\n합계 ${fmt(total)}개 · ${boardCache.미반납.length}명\n남은 빨시는 반납해주세요.`,
+    "명단을 복사했습니다"
+  );
+});
+
+/* ===== 기간별 통계 ===== */
+let statCache = null;
+
+function ymd(dt){
+  return dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0") + "-" + String(dt.getDate()).padStart(2, "0");
+}
+
+const stPreset = chipGroup("#st-preset", v => {
+  const now = new Date();
+  if (v === "all") { $("#st-from").value = ""; $("#st-to").value = ""; }
+  else if (v === "month") {
+    $("#st-from").value = ymd(new Date(now.getFullYear(), now.getMonth(), 1));
+    $("#st-to").value = ymd(now);
+  } else {
+    const days = Number(v);
+    const from = new Date(now); from.setDate(now.getDate() - days + 1);
+    $("#st-from").value = ymd(from);
+    $("#st-to").value = ymd(now);
+  }
+  if (ADMIN_PW) loadStats();
+});
+
+async function loadStats(){
+  if (!ADMIN_PW) return;
+  try {
+    statCache = await adminCall("stats", { 시작일: $("#st-from").value || "", 종료일: $("#st-to").value || "" });
+    renderStats(statCache);
+  } catch(e){ toast(e.message, true); }
+}
+
+function renderStats(d){
+  $("#st-out").textContent = fmt(d.총받음);
+  $("#st-use").textContent = fmt(d.총사용);
+  $("#st-back").textContent = fmt(d.총반납);
+  $("#st-rate").textContent = d.전체소진율 + "%";
+  $("#st-avg").textContent = fmt(d.하루평균);
+  $("#st-ppl").textContent = fmt(d.인원수);
+  $("#st-buyq").textContent = fmt(d.매입수량);
+  $("#st-buyw").textContent = fmt(d.매입금액);
+
+  const parts = [];
+  if (d.자금수입) parts.push("자금 수입 " + fmt(d.자금수입));
+  if (d.자금지출) parts.push("기타 지출 " + fmt(d.자금지출));
+  const bysrc = bySrcHtml(d.성별수입);
+  $("#st-fund").innerHTML = [parts.join(" · "), bysrc].filter(Boolean).join("<br>");
+
+  $("#st-list").innerHTML = d.인원.length ? d.인원.map(p =>
+    `<li class="li"><div class="main"><div class="nm">${p.캐릭명}</div>
+      <div class="sub">사용 ${fmt(p.사용)} · 반납 ${fmt(p.반납)}${p.미정산 > 0 ? " · 미정산 " + fmt(p.미정산) : ""} · 소진율 ${p.소진율}%</div></div>
+      <div class="amt plus num">${fmt(p.받음)}</div></li>`
+  ).join("") : '<li class="empty">이 기간에 기록이 없습니다</li>';
+}
+
+$("#st-go").addEventListener("click", loadStats);
+
+(function initStatRange(){
+  const now = new Date();
+  const from = new Date(now); from.setDate(now.getDate() - 29);
+  $("#st-from").value = ymd(from);
+  $("#st-to").value = ymd(now);
+})();
+
+$("#st-copy").addEventListener("click", () => {
+  if (!statCache) return toast("먼저 통계를 불러오세요", true);
+  const d = statCache;
+  const range = (d.시작일 || "처음") + " ~ " + (d.종료일 || "오늘");
+  const head = `[빨시 통계] ${range}\n`
+    + `불출 ${fmt(d.총받음)} · 사용 ${fmt(d.총사용)} · 반납 ${fmt(d.총반납)} · 소진율 ${d.전체소진율}%\n`
+    + `하루 평균 ${fmt(d.하루평균)}개 · 참여 ${fmt(d.인원수)}명\n`;
+  const body = d.인원.slice(0, 30).map(p =>
+    `${p.캐릭명} 받음 ${fmt(p.받음)} / 사용 ${fmt(p.사용)} / 소진율 ${p.소진율}%`
+  ).join("\n");
+  copyText(head + "\n" + body, "통계를 복사했습니다");
 });
 
 /* ===== 기록 관리 ===== */
