@@ -124,6 +124,7 @@ summary::before{content:"+ ";font-weight:700}
 details[open] summary::before{content:"− "}
 .tiny{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.55}
 .setup{padding:24px 16px;max-width:520px;margin:0 auto}
+nav button[hidden]{display:none}
 #ad-body{display:none}
 #ad-body.on{display:block}
 #ad-login.off{display:none}
@@ -432,6 +433,52 @@ details[open] summary::before{content:"− "}
   </div>
 </section>
 
+<!-- 기록 관리 -->
+<section id="s-manage">
+  <div class="card wide">
+    <h2>기록 관리</h2>
+    <div class="chips" id="mg-kind">
+      <div class="chip" role="button" tabindex="0" aria-pressed="true" data-v="불출">불출·반납</div>
+      <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="입고">입고</div>
+      <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="자금">자금</div>
+      <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="판매">판매신청</div>
+      <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="정정">정정요청</div>
+    </div>
+    <label for="mg-q">캐릭명이나 내용으로 찾기</label>
+    <input id="mg-q" autocomplete="off" placeholder="비워두면 전체">
+    <div class="row2" style="margin-top:12px">
+      <div><label for="mg-from" style="margin-top:0">시작일</label><input id="mg-from" type="date"></div>
+      <div><label for="mg-to" style="margin-top:0">종료일</label><input id="mg-to" type="date"></div>
+    </div>
+    <button class="go" id="mg-search" style="background:var(--blue)">찾기</button>
+    <p class="tiny" id="mg-count"></p>
+    <ul class="list" id="mg-list"><li class="empty">찾기를 눌러 기록을 불러오세요</li></ul>
+  </div>
+
+  <div class="card">
+    <h2>휴지통</h2>
+    <p class="tiny" style="margin-top:0">지운 기록이 여기 남습니다. 복구를 누르면 원래 자리로 돌아갑니다.</p>
+    <ul class="list" id="tr-list" style="margin-top:10px"><li class="empty">휴지통이 비어 있습니다</li></ul>
+    <details>
+      <summary>휴지통 비우기</summary>
+      <label for="tr-pw">운영진 비밀번호</label>
+      <input id="tr-pw" type="password" autocomplete="off">
+      <button class="go" id="tr-purge" style="background:var(--red)">휴지통 완전히 비우기</button>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>전체 초기화</h2>
+    <p class="tiny" style="margin-top:0">불출·입고·자금·판매신청·정정요청·일별설정 기록을 모두 지웁니다. 지우기 전에 시트에 백업 탭이 자동으로 만들어집니다.</p>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:12px">
+      <input type="checkbox" id="rs-chars" style="width:auto"> 캐릭명단도 함께 지우기
+    </label>
+    <label for="rs-pw">확인을 위해 운영진 비밀번호를 다시 입력하세요</label>
+    <input id="rs-pw" type="password" autocomplete="off">
+    <button class="go" id="rs-go">전체 초기화하기</button>
+  </div>
+</section>
+
 </main>
 
 <nav>
@@ -439,6 +486,7 @@ details[open] summary::before{content:"− "}
   <button data-tab="s-me"><span class="ic">◉</span>내 현황</button>
   <button data-tab="s-board"><span class="ic">▦</span>문파</button>
   <button data-tab="s-admin"><span class="ic">⚙</span>운영진</button>
+  <button data-tab="s-manage" id="nav-manage" hidden><span class="ic">▤</span>관리</button>
 </nav>
 
 <div class="toast" id="toast"></div>
@@ -532,6 +580,7 @@ $$("nav button").forEach(b => b.addEventListener("click", () => {
   $$("main section").forEach(s => s.classList.toggle("on", s.id === b.dataset.tab));
   if (b.dataset.tab === "s-me") loadMe();
   if (b.dataset.tab === "s-board") loadBoard();
+  if (b.dataset.tab === "s-manage") { loadRecords(); loadTrash(); }
   window.scrollTo(0, 0);
 }));
 
@@ -737,6 +786,7 @@ $("#ad-in").addEventListener("click", async () => {
     ADMIN_PW = pw;
     $("#ad-login").classList.add("off");
     $("#ad-body").classList.add("on");
+    $("#nav-manage").hidden = false;
     renderAdmin(await adminCall("dash"));
   } catch(e){ toast(e.message, true); }
   btn.disabled = false; btn.textContent = "들어가기";
@@ -878,6 +928,104 @@ $("#ad-body").addEventListener("click", async e => {
   } catch(err){ toast(err.message, true); }
 });
 
+/* ===== 기록 관리 ===== */
+const mgKind = chipGroup("#mg-kind", () => { if (ADMIN_PW) loadRecords(); });
+
+function mgFilters(){
+  return {
+    종류: mgKind.get(),
+    검색: $("#mg-q").value.trim(),
+    시작일: $("#mg-from").value || "",
+    종료일: $("#mg-to").value || ""
+  };
+}
+
+async function loadRecords(){
+  if (!ADMIN_PW) { $("#mg-list").innerHTML = '<li class="empty">운영진 탭에서 먼저 로그인하세요</li>'; return; }
+  try { renderRecords(await adminCall("records", mgFilters())); }
+  catch(e){ toast(e.message, true); }
+}
+
+function renderRecords(d){
+  $("#mg-count").textContent = d.총건수
+    ? `${fmt(d.총건수)}건 중 최근 ${fmt(d.목록.length)}건을 보고 있습니다`
+    : "조건에 맞는 기록이 없습니다";
+  $("#mg-list").innerHTML = d.목록.length ? d.목록.map(r => {
+    const col = r.유형 === "받음" ? "var(--red)" : r.유형 === "반납" ? "var(--green)"
+      : r.유형 === "사용" ? "var(--gold)" : r.유형 === "지출" ? "var(--red)"
+      : r.단위 === "원" ? "var(--gold)" : "var(--text)";
+    const val = r.단위 ? fmt(r.값) + r.단위 : "";
+    return `<li class="li"><div class="main">
+      <div class="nm" style="${r.취소 ? "text-decoration:line-through;color:var(--muted)" : ""}">${r.제목}</div>
+      <div class="sub">${r.일자} · ${r.상세}</div></div>
+      <div class="amt num" style="color:${col};font-size:15px">${val}</div>
+      <button class="sm no" data-del="${r.기록ID}" data-kind="${r.종류}">삭제</button></li>`;
+  }).join("") : '<li class="empty">조건에 맞는 기록이 없습니다</li>';
+}
+
+async function loadTrash(){
+  if (!ADMIN_PW) return;
+  try {
+    const t = await adminCall("trash");
+    $("#tr-list").innerHTML = t.length ? t.map(r =>
+      `<li class="li"><div class="main"><div class="nm">${r.원본시트}</div>
+        <div class="sub">${r.삭제시각} · ${r.요약}</div></div>
+        <button class="sm ok" data-restore="${r.삭제ID}">복구</button></li>`
+    ).join("") : '<li class="empty">휴지통이 비어 있습니다</li>';
+  } catch(e){ /* 조용히 */ }
+}
+
+$("#tr-list").addEventListener("click", async e => {
+  const b = e.target.closest("button[data-restore]");
+  if (!b) return;
+  try {
+    await adminCall("restore", { 삭제ID: b.dataset.restore });
+    toast("기록을 되살렸습니다");
+    loadTrash(); loadRecords();
+  } catch(err){ toast(err.message, true); }
+});
+
+$("#tr-purge").addEventListener("click", async () => {
+  const pw2 = $("#tr-pw").value.trim();
+  if (!pw2) return toast("비밀번호를 입력하세요", true);
+  if (!confirm("휴지통을 완전히 비울까요? 되살릴 수 없습니다.")) return;
+  try {
+    await adminCall("purge", { 확인: pw2 });
+    $("#tr-pw").value = "";
+    toast("휴지통을 비웠습니다");
+    loadTrash();
+  } catch(e){ toast(e.message, true); }
+});
+
+$("#mg-search").addEventListener("click", loadRecords);
+$("#mg-q").addEventListener("keydown", e => { if (e.key === "Enter") loadRecords(); });
+
+$("#mg-list").addEventListener("click", async e => {
+  const b = e.target.closest("button[data-del]");
+  if (!b) return;
+  if (!confirm("이 기록을 완전히 지울까요? 되돌릴 수 없습니다.")) return;
+  try {
+    renderRecords(await adminCall("delRec", Object.assign(mgFilters(), { 종류: b.dataset.kind, 기록ID: b.dataset.del })));
+    toast("휴지통으로 옮겼습니다");
+    loadTrash();
+  } catch(err){ toast(err.message, true); }
+});
+
+$("#rs-go").addEventListener("click", async () => {
+  const pw2 = $("#rs-pw").value.trim();
+  if (!pw2) return toast("비밀번호를 입력하세요", true);
+  if (!confirm("정말 전체 초기화할까요? 모든 기록이 사라지고 되돌릴 수 없습니다.")) return;
+  if (!confirm("마지막 확인입니다. 진행할까요?")) return;
+  try {
+    const r = await adminCall("resetAll", { 확인: pw2, 캐릭명단포함: $("#rs-chars").checked });
+    $("#rs-pw").value = "";
+    lastRev = 0;
+    toast("초기화 완료 · 백업 탭 " + (r.백업 || []).length + "개를 시트에 만들었습니다");
+    loadRecords(); loadTrash();
+    renderAdmin(await adminCall("dash"));
+  } catch(e){ toast(e.message, true); }
+});
+
 /* ===== 자동 갱신 ===== */
 let lastRev = 0, poll = null, busy = false;
 
@@ -891,6 +1039,7 @@ async function refreshCurrent(){
   if (t === "s-me") await loadMe();
   else if (t === "s-board") await loadBoard();
   else if (t === "s-admin" && ADMIN_PW) renderAdmin(await adminCall("dash"));
+  else if (t === "s-manage" && ADMIN_PW) { await loadRecords(); await loadTrash(); }
   else await boot();
 }
 
@@ -898,7 +1047,7 @@ async function checkChanges(){
   if (busy || document.hidden) return;
   const t = currentTab();
   if (t === "s-write") return;              // 입력 중에는 건드리지 않음
-  if (t === "s-admin" && !ADMIN_PW) return; // 로그인 전에는 확인 안 함
+  if ((t === "s-admin" || t === "s-manage") && !ADMIN_PW) return; // 로그인 전에는 확인 안 함
   busy = true;
   try {
     const r = await call("rev");
