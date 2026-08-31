@@ -121,7 +121,47 @@ summary::before{content:"+ ";font-weight:700}
 details[open] summary::before{content:"− "}
 .tiny{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.55}
 .setup{padding:24px 16px;max-width:520px;margin:0 auto}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+#ad-body{display:none}
+#ad-body.on{display:block}
+#ad-login.off{display:none}
+#refresh{
+  background:#131a29;border:1px solid var(--line);color:var(--muted);
+  width:32px;height:32px;border-radius:9px;font-size:16px;cursor:pointer;line-height:1;
+}
+#refresh.spin{animation:sp .7s linear infinite;color:var(--text)}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* 넓은 화면 */
+@media (min-width:820px){
+  body{padding-bottom:24px}
+  main{max-width:1180px;padding:22px 28px 40px}
+  header{padding:14px 28px}
+  header .hrow,header .hdate{max-width:1180px;margin:0 auto}
+  nav{
+    position:sticky;top:0;left:auto;right:auto;bottom:auto;
+    max-width:1180px;margin:0 auto 18px;border-top:0;border-bottom:1px solid var(--line);
+    background:transparent;backdrop-filter:none;
+  }
+  nav button{flex:0 0 auto;flex-direction:row;gap:7px;font-size:14px;padding:12px 20px}
+  nav button[aria-current="true"]{box-shadow:inset 0 -2px 0 var(--blue)}
+  main{display:block}
+  section.on{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+  .card{margin-bottom:0}
+  .wide{grid-column:1 / -1}
+  .stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .li .sub{white-space:normal}
+  .hero .n{font-size:64px}
+  #ad-login{max-width:420px}
+  #ad-body.on{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+}
+@media (min-width:1180px){
+  #ad-body.on{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (min-width:1180px){
+  section.on{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .half{grid-column:span 2}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
@@ -129,7 +169,10 @@ details[open] summary::before{content:"− "}
 <header>
   <div class="hrow">
     <span class="htitle">문파 빨시 장부</span>
-    <span id="hstate"></span>
+    <span style="display:flex;align-items:center;gap:8px">
+      <span id="hstate"></span>
+      <button id="refresh" title="새로고침" aria-label="새로고침">⟳</button>
+    </span>
   </div>
   <div class="hdate" id="hdate">불러오는 중</div>
 </header>
@@ -221,7 +264,7 @@ details[open] summary::before{content:"− "}
     <div id="me-pending"></div>
   </div>
 
-  <div class="card">
+  <div class="card wide">
     <h2>최근 기록</h2>
     <ul class="list" id="me-list"><li class="empty">기록이 없습니다</li></ul>
     <details>
@@ -253,7 +296,7 @@ details[open] summary::before{content:"− "}
     </div>
   </div>
 
-  <div class="card">
+  <div class="card wide">
     <h2>아직 반납 안 한 사람</h2>
     <ul class="list" id="b-list"><li class="empty">모두 정산됐습니다</li></ul>
   </div>
@@ -268,7 +311,7 @@ details[open] summary::before{content:"− "}
     <button class="go" id="ad-in" style="background:var(--blue)">들어가기</button>
   </div>
 
-  <div id="ad-body" style="display:none">
+  <div id="ad-body" class="wide">
     <div class="card">
       <h2>오늘 총 불출량</h2>
       <div class="row2">
@@ -304,12 +347,12 @@ details[open] summary::before{content:"− "}
       <ul class="list" id="ad-fixes"><li class="empty">대기 중인 요청이 없습니다</li></ul>
     </div>
 
-    <div class="card">
+    <div class="card wide">
       <h2>오늘 기록</h2>
       <ul class="list" id="ad-today"><li class="empty">오늘 기록이 없습니다</li></ul>
     </div>
 
-    <div class="card">
+    <div class="card wide">
       <h2>전체 인원 현황</h2>
       <ul class="list" id="ad-all"><li class="empty">기록이 없습니다</li></ul>
     </div>
@@ -424,6 +467,7 @@ async function boot(){
   try {
     const b = await call("bootstrap");
     state = b;
+    if (b.rev) lastRev = b.rev;
     $("#charlist").innerHTML = b.chars.map(c => `<option value="${c}">`).join("");
     $("#hdate").textContent = b.today + (b.day.총불출량 ? " · 오늘 불출 " + fmt(b.day.총불출량) + "개" : " · 총 불출량 미입력");
     $("#hstate").innerHTML = b.day.마감
@@ -533,6 +577,7 @@ $("#fx-save").addEventListener("click", async () => {
 async function loadBoard(){
   try {
     const b = await call("board");
+    if (b.rev) lastRev = b.rev;
     const total = b.day.총불출량, filled = b.오늘기입;
     const pct = total > 0 ? Math.min(100, Math.round(filled / total * 100)) : (filled > 0 ? 100 : 0);
     $("#g-fill").style.width = pct + "%";
@@ -564,8 +609,8 @@ $("#ad-in").addEventListener("click", async () => {
   try {
     const d = await call("admin", { pw: pw, sub: "dash" });
     ADMIN_PW = pw;
-    $("#ad-login").style.display = "none";
-    $("#ad-body").style.display = "block";
+    $("#ad-login").classList.add("off");
+    $("#ad-body").classList.add("on");
     renderAdmin(d);
   } catch(e){ toast(e.message, true); }
 });
@@ -575,6 +620,7 @@ function adminCall(sub, extra){
 }
 
 function renderAdmin(d){
+  if (d.rev) lastRev = d.rev;
   $("#ad-total").value = d.day.총불출량 || "";
   $("#ad-diff").textContent = "기입 " + fmt(d.오늘기입) + " / 총 " + fmt(d.day.총불출량)
     + (d.차이 ? " (차이 " + fmt(d.차이) + ")" : "");
@@ -658,7 +704,54 @@ $("#ad-body").addEventListener("click", async e => {
   } catch(err){ toast(err.message, true); }
 });
 
+/* ===== 자동 갱신 ===== */
+let lastRev = 0, poll = null, busy = false;
+
+function currentTab(){
+  const b = document.querySelector('nav button[aria-current="true"]');
+  return b ? b.dataset.tab : "s-write";
+}
+
+async function refreshCurrent(){
+  const t = currentTab();
+  if (t === "s-me") await loadMe();
+  else if (t === "s-board") await loadBoard();
+  else if (t === "s-admin" && ADMIN_PW) renderAdmin(await adminCall("dash"));
+  else await boot();
+}
+
+async function checkChanges(){
+  if (busy || document.hidden) return;
+  const t = currentTab();
+  if (t === "s-write") return;              // 입력 중에는 건드리지 않음
+  if (t === "s-admin" && !ADMIN_PW) return; // 로그인 전에는 확인 안 함
+  busy = true;
+  try {
+    const r = await call("rev");
+    if (r.rev && r.rev !== lastRev) { lastRev = r.rev; await refreshCurrent(); }
+  } catch(e){ /* 조용히 넘어감 */ }
+  busy = false;
+}
+
+function startPoll(){ if (!poll) poll = setInterval(checkChanges, 15000); }
+function stopPoll(){ clearInterval(poll); poll = null; }
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) stopPoll();
+  else { startPoll(); checkChanges(); }
+});
+
+$("#refresh").addEventListener("click", async () => {
+  const b = $("#refresh");
+  if (busy) return;
+  busy = true; b.classList.add("spin");
+  try { await refreshCurrent(); toast("최신 상태로 새로고침했습니다"); }
+  catch(e){ toast(e.message, true); }
+  busy = false; b.classList.remove("spin");
+});
+
 boot();
+startPoll();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
 </body>
