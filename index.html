@@ -212,6 +212,16 @@ details[open] summary::before{content:"− "}
   </div>
 
   <div class="card">
+    <h2>문파에 판 빨시</h2>
+    <div class="stats">
+      <div class="stat"><div class="k">누적 판매</div><div class="v num" id="me-sold">0</div></div>
+      <div class="stat"><div class="k">받은 금액</div><div class="v num" id="me-sold-won" style="color:var(--gold)">0</div></div>
+    </div>
+    <ul class="list" id="me-sales" style="margin-top:12px"><li class="empty">판매 기록이 없습니다</li></ul>
+    <div id="me-pending"></div>
+  </div>
+
+  <div class="card">
     <h2>최근 기록</h2>
     <ul class="list" id="me-list"><li class="empty">기록이 없습니다</li></ul>
     <details>
@@ -302,6 +312,16 @@ details[open] summary::before{content:"− "}
     <div class="card">
       <h2>전체 인원 현황</h2>
       <ul class="list" id="ad-all"><li class="empty">기록이 없습니다</li></ul>
+    </div>
+
+    <div class="card">
+      <h2>운영진 비밀번호 바꾸기</h2>
+      <label for="ad-newpw">새 비밀번호</label>
+      <input id="ad-newpw" type="text" autocomplete="off" placeholder="4자 이상">
+      <label for="ad-newpw2">한 번 더</label>
+      <input id="ad-newpw2" type="text" autocomplete="off">
+      <button class="go" id="ad-pw-save" style="background:var(--blue)">비밀번호 바꾸기</button>
+      <p class="tiny">바꾸면 기존 비밀번호는 즉시 못 씁니다. 운영진에게 새 번호를 알려주세요.</p>
     </div>
   </div>
 </section>
@@ -476,6 +496,18 @@ function renderMe(r){
     warn.innerHTML = '<div class="warn">' + r.미반납일수 + '일째 미반납입니다. 남은 ' + fmt(r.보유) + '개를 반납해주세요.</div>';
   else warn.innerHTML = "";
 
+  $("#me-sold").textContent = fmt(r.판매수량 || 0);
+  $("#me-sold-won").textContent = fmt(r.판매금액 || 0);
+  const sl = $("#me-sales");
+  sl.innerHTML = (r.판매이력 || []).length ? r.판매이력.map(x =>
+    `<li class="li"><div class="main"><div class="nm">${x.일자}</div>
+      <div class="sub">${fmt(x.수량)}개 · 개당 ${fmt(x.개당단가)}${x.비고 ? " · " + x.비고 : ""}</div></div>
+      <div class="amt num" style="color:var(--gold)">${fmt(x.총액)}</div></li>`
+  ).join("") : '<li class="empty">판매 기록이 없습니다</li>';
+  const pend = (r.판매신청 || []).filter(x => x.상태 === "대기");
+  $("#me-pending").innerHTML = pend.length
+    ? '<p class="tiny">승인 대기 중: ' + pend.map(x => fmt(x.수량) + "개").join(", ") + '</p>' : "";
+
   const ul = $("#me-list");
   ul.innerHTML = r.최근.length ? r.최근.map(x => {
     const sub = [x.일자 + " " + x.시각, x.경로, x.구분 === "용병" && x.실사용자 ? "실사용 " + x.실사용자 : "", x.비고]
@@ -600,9 +632,21 @@ $("#ad-in-save").addEventListener("click", async () => {
   } catch(e){ toast(e.message, true); }
 });
 
+$("#ad-pw-save").addEventListener("click", async () => {
+  const a = $("#ad-newpw").value.trim(), b = $("#ad-newpw2").value.trim();
+  if (a.length < 4) return toast("4자 이상으로 정해주세요", true);
+  if (a !== b) return toast("두 칸이 서로 다릅니다", true);
+  try {
+    await adminCall("setPw", { 새비밀번호: a });
+    ADMIN_PW = a;
+    $("#ad-newpw").value = ""; $("#ad-newpw2").value = "";
+    toast("비밀번호를 바꿨습니다");
+  } catch(e){ toast(e.message, true); }
+});
+
 $("#ad-body").addEventListener("click", async e => {
   const b = e.target.closest("button");
-  if (!b) return;
+  if (!b || b.id) return;
   try {
     if (b.dataset.sale) renderAdmin(await adminCall("saleAct", { 신청ID: b.dataset.sale, 결정: b.dataset.act }));
     else if (b.dataset.fix) renderAdmin(await adminCall("fixAct", { 요청ID: b.dataset.fix, 결정: b.dataset.act }));
