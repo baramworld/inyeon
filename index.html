@@ -58,6 +58,9 @@ textarea{min-height:64px;resize:vertical}
 .chip[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:#fff}
 .chip.red[aria-pressed="true"]{background:var(--red);border-color:var(--red)}
 .chip.green[aria-pressed="true"]{background:var(--green);border-color:var(--green)}
+.chip.gold[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:#101725}
+.ask{margin-top:16px;padding:14px;border-radius:12px;background:rgba(217,164,65,.12);border:1px solid rgba(217,164,65,.35)}
+.asktitle{font-size:14.5px;font-weight:600}
 button.go{
   width:100%;margin-top:18px;padding:15px;border:0;border-radius:12px;
   background:var(--red);color:#fff;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;
@@ -204,6 +207,7 @@ details[open] summary::before{content:"− "}
     <div class="chips" id="f-type">
       <div class="chip red" role="button" tabindex="0" aria-pressed="true" data-v="받음">받음</div>
       <div class="chip green" role="button" tabindex="0" aria-pressed="false" data-v="반납">반납</div>
+      <div class="chip gold" role="button" tabindex="0" aria-pressed="false" data-v="사용">다 씀</div>
     </div>
 
     <div id="f-path-wrap">
@@ -215,13 +219,24 @@ details[open] summary::before{content:"− "}
       </div>
     </div>
 
-    <label for="f-qty">수량</label>
-    <input id="f-qty" type="number" inputmode="numeric" min="1" placeholder="개수">
+    <div id="f-qty-wrap">
+      <label for="f-qty">수량</label>
+      <input id="f-qty" type="number" inputmode="numeric" min="1" placeholder="개수">
+    </div>
+    <p class="tiny" id="f-alluse" style="display:none">지금 들고 있는 빨시 전부를 쓴 것으로 기록합니다.</p>
 
     <label for="f-memo">비고 (선택)</label>
     <input id="f-memo" placeholder="예: 내일 반납, 공짜로 받음">
 
     <button class="go" id="f-save">받음 기록하기</button>
+
+    <div id="f-ask" class="ask" style="display:none">
+      <div class="asktitle" id="f-ask-title">남은 빨시는 어떻게 됐나요?</div>
+      <div class="row2" style="margin-top:12px">
+        <button class="go" id="f-ask-used" style="margin-top:0;background:var(--gold)">공성에서 다 썼습니다</button>
+        <button class="go" id="f-ask-keep" style="margin-top:0;background:#131a29;border:1px solid var(--line);color:var(--text)">아직 갖고 있습니다</button>
+      </div>
+    </div>
   </div>
 
   <div class="card">
@@ -250,6 +265,8 @@ details[open] summary::before{content:"− "}
       <div class="stat"><div class="k">오늘 받음</div><div class="v num" id="me-today-in">0</div></div>
       <div class="stat"><div class="k">오늘 반납</div><div class="v num" id="me-today-out">0</div></div>
       <div class="stat"><div class="k">누적 받음</div><div class="v num" id="me-in">0</div></div>
+      <div class="stat"><div class="k">누적 사용</div><div class="v num" id="me-used">0</div></div>
+      <div class="stat"><div class="k">누적 반납</div><div class="v num" id="me-back">0</div></div>
       <div class="stat"><div class="k">소진율</div><div class="v num" id="me-rate">0%</div></div>
     </div>
   </div>
@@ -495,8 +512,12 @@ const kind = chipGroup("#f-kind", v => {
 const type = chipGroup("#f-type", v => {
   const b = $("#f-save");
   $("#f-path-wrap").style.display = v === "받음" ? "block" : "none";
-  b.textContent = v === "받음" ? "받음 기록하기" : "반납 기록하기";
+  $("#f-qty-wrap").style.display = v === "사용" ? "none" : "block";
+  $("#f-alluse").style.display = v === "사용" ? "block" : "none";
+  $("#f-ask").style.display = "none";
+  b.textContent = v === "받음" ? "받음 기록하기" : v === "반납" ? "반납 기록하기" : "남은 빨시 전부 사용 처리";
   b.className = "go" + (v === "반납" ? " ret" : "");
+  if (v === "사용") b.style.background = "var(--gold)"; else b.style.background = "";
 });
 const path = chipGroup("#f-path");
 const fundSrc = chipGroup("#fd-src");
@@ -541,24 +562,53 @@ async function boot(){
 /* 기록 저장 */
 $("#f-save").addEventListener("click", async () => {
   const name = $("#f-name").value.trim();
+  const t = type.get();
   const qty = Number($("#f-qty").value);
   if (!name) return toast("캐릭명을 적어주세요", true);
-  if (!(qty > 0)) return toast("수량을 적어주세요", true);
+  if (t !== "사용" && !(qty > 0)) return toast("수량을 적어주세요", true);
   const btn = $("#f-save");
   btn.disabled = true;
   try {
     const r = await call("submit", {
       캐릭명: name, 구분: kind.get(), 실사용자: $("#f-driver").value.trim(),
-      유형: type.get(), 수량: qty, 경로: path.get(), 비고: $("#f-memo").value.trim()
+      유형: t, 수량: t === "사용" ? 0 : qty, 전량: t === "사용",
+      경로: path.get(), 비고: $("#f-memo").value.trim()
     });
     localStorage.setItem("bs_name", name);
     if ($("#f-driver").value.trim()) localStorage.setItem("bs_driver", $("#f-driver").value.trim());
     $("#f-qty").value = ""; $("#f-memo").value = "";
     renderMe(r);
-    toast(type.get() + " " + fmt(qty) + "개 저장 · 현재 보유 " + fmt(r.보유) + "개");
     boot();
+
+    if (t === "반납" && r.보유 > 0) {
+      $("#f-ask-title").textContent = "남은 " + fmt(r.보유) + "개는 어떻게 됐나요?";
+      $("#f-ask").style.display = "block";
+      $("#f-ask").scrollIntoView({ block: "nearest" });
+      toast("반납 " + fmt(qty) + "개를 기록했습니다");
+    } else {
+      $("#f-ask").style.display = "none";
+      toast(t + " " + fmt(t === "사용" ? r.사용 : qty) + "개 저장 · 현재 보유 " + fmt(r.보유) + "개");
+    }
   } catch(e){ toast(e.message, true); }
   btn.disabled = false;
+});
+
+$("#f-ask-used").addEventListener("click", async () => {
+  const name = $("#f-name").value.trim();
+  $("#f-ask").style.display = "none";
+  try {
+    const r = await call("submit", {
+      캐릭명: name, 구분: kind.get(), 실사용자: $("#f-driver").value.trim(),
+      유형: "사용", 수량: 0, 전량: true, 비고: "반납 후 잔량 소진"
+    });
+    renderMe(r);
+    toast("사용 처리했습니다 · 남은 수량 0개");
+  } catch(e){ toast(e.message, true); }
+});
+
+$("#f-ask-keep").addEventListener("click", () => {
+  $("#f-ask").style.display = "none";
+  toast("보유 상태로 남겨뒀습니다");
 });
 
 /* 판매 신청 */
@@ -592,6 +642,8 @@ function renderMe(r){
   $("#me-today-in").textContent = fmt(r.오늘받음);
   $("#me-today-out").textContent = fmt(r.오늘반납);
   $("#me-in").textContent = fmt(r.받음);
+  $("#me-used").textContent = fmt(r.사용 || 0);
+  $("#me-back").textContent = fmt(r.반납);
   $("#me-rate").textContent = r.소진율 + "%";
 
   const warn = $("#me-warn");
@@ -617,7 +669,7 @@ function renderMe(r){
     const sub = [x.일자 + " " + x.시각, x.경로, x.구분 === "용병" && x.실사용자 ? "실사용 " + x.실사용자 : "", x.비고]
       .filter(Boolean).join(" · ");
     return `<li class="li"><div class="main"><div class="nm">${x.유형}</div><div class="sub">${sub}</div></div>
-      <div class="amt ${x.유형 === "반납" ? "minus" : "plus"} num">${x.유형 === "반납" ? "−" : "+"}${fmt(x.수량)}</div></li>`;
+      <div class="amt num" style="color:${x.유형 === "받음" ? "var(--red)" : x.유형 === "반납" ? "var(--green)" : "var(--gold)"}">${x.유형 === "받음" ? "+" : "−"}${fmt(x.수량)}</div></li>`;
   }).join("") : '<li class="empty">기록이 없습니다</li>';
 }
 
@@ -657,7 +709,8 @@ async function loadBoard(){
 
     const ul = $("#b-list");
     ul.innerHTML = b.미반납.length ? b.미반납.map((p, i) => {
-      const sub = "받음 " + fmt(p.받음) + " · 반납 " + fmt(p.반납) + (p.미반납일수 ? " · " + p.미반납일수 + "일째" : "");
+      const sub = "받음 " + fmt(p.받음) + " · 사용 " + fmt(p.사용 || 0) + " · 반납 " + fmt(p.반납)
+        + (p.미반납일수 ? " · " + p.미반납일수 + "일째" : "");
       return `<li class="li"><span class="rank">${i + 1}</span>
         ${p.경고 ? '<span class="dot"></span>' : ''}
         <div class="main"><div class="nm">${p.캐릭명}</div><div class="sub">${sub}</div></div>
@@ -719,7 +772,7 @@ function renderAdmin(d){
   $("#ad-today").innerHTML = d.오늘기록.length ? d.오늘기록.map(r =>
     `<li class="li"><div class="main"><div class="nm">${r.캐릭명} · ${r.유형}</div>
       <div class="sub">${[r.시각, r.구분, r.실사용자 ? "실사용 " + r.실사용자 : "", r.경로, r.비고].filter(Boolean).join(" · ")}</div></div>
-      <div class="amt ${r.유형 === "반납" ? "minus" : "plus"} num">${r.유형 === "반납" ? "−" : "+"}${fmt(r.수량)}</div>
+      <div class="amt num" style="color:${r.유형 === "받음" ? "var(--red)" : r.유형 === "반납" ? "var(--green)" : "var(--gold)"}">${r.유형 === "받음" ? "+" : "−"}${fmt(r.수량)}</div>
       <button class="sm no" data-cancel="${r.기록ID}">취소</button></li>`
   ).join("") : '<li class="empty">오늘 기록이 없습니다</li>';
 
@@ -741,7 +794,7 @@ function renderAdmin(d){
 
   $("#ad-all").innerHTML = d.전체.length ? d.전체.map(p =>
     `<li class="li"><div class="main"><div class="nm">${p.캐릭명}</div>
-      <div class="sub">받음 ${fmt(p.받음)} · 반납 ${fmt(p.반납)} · 소진율 ${p.소진율}%${p.미반납일수 ? " · " + p.미반납일수 + "일째" : ""}</div></div>
+      <div class="sub">받음 ${fmt(p.받음)} · 사용 ${fmt(p.사용 || 0)} · 반납 ${fmt(p.반납)} · 소진율 ${p.소진율}%${p.미반납일수 ? " · " + p.미반납일수 + "일째" : ""}</div></div>
       <div class="amt ${p.보유 > 0 ? "plus" : "minus"} num">${fmt(p.보유)}</div></li>`
   ).join("") : '<li class="empty">기록이 없습니다</li>';
 }
