@@ -395,12 +395,12 @@ details[open] summary::before{content:"− "}
 
     <div class="card">
       <h2>문파 설정</h2>
-      <label for="cf-open">자금 초기잔고</label>
-      <input id="cf-open" class="money" inputmode="numeric" placeholder="앱 쓰기 시작할 때 있던 금액">
+      <label for="cf-open">현재 총 잔고</label>
+      <input id="cf-open" class="money" inputmode="numeric" placeholder="지금 문파 금고에 있는 실제 금액">
       <label for="cf-warn">미반납 경고 일수</label>
       <input id="cf-warn" type="number" inputmode="numeric" min="1" placeholder="예: 2">
       <button class="go" id="cf-save" style="background:var(--blue)">설정 저장하기</button>
-      <p class="tiny">초기잔고는 앱을 쓰기 시작한 시점의 문파 자금입니다. 이후 수입과 지출은 위에서 기록하세요.</p>
+      <p class="tiny">지금 금고에 실제로 있는 금액을 넣으면 그 값에 맞춰집니다. 숫자가 어긋났을 때 여기서 다시 맞추세요. 이후 수입·지출은 위 자금 칸에서 기록하면 자동으로 반영됩니다.</p>
     </div>
 
     <div class="card">
@@ -676,14 +676,20 @@ function bySrcHtml(m){
 /* 운영진 */
 $("#ad-in").addEventListener("click", async () => {
   const pw = $("#ad-pw").value.trim();
+  const btn = $("#ad-in");
+  if (!pw) return toast("비밀번호를 입력하세요", true);
+  btn.disabled = true; btn.textContent = "확인 중…";
   try {
-    const d = await call("admin", { pw: pw, sub: "dash" });
+    await call("admin", { pw: pw, sub: "auth" });   // 확인만 — 가볍고 빠름
     ADMIN_PW = pw;
     $("#ad-login").classList.add("off");
     $("#ad-body").classList.add("on");
-    renderAdmin(d);
+    renderAdmin(await adminCall("dash"));
   } catch(e){ toast(e.message, true); }
+  btn.disabled = false; btn.textContent = "들어가기";
 });
+
+$("#ad-pw").addEventListener("keydown", e => { if (e.key === "Enter") $("#ad-in").click(); });
 
 function adminCall(sub, extra){
   return call("admin", Object.assign({ pw: ADMIN_PW, sub: sub }, extra || {}));
@@ -723,7 +729,7 @@ function renderAdmin(d){
   $("#fd-out").textContent = fmt(d.자금지출 || 0);
   $("#fd-bysrc").innerHTML = bySrcHtml(d.성별수입);
   if (!$("#fd-date").value) $("#fd-date").value = d.today;
-  if (document.activeElement !== $("#cf-open")) setMoney($("#cf-open"), d.초기잔고 || 0);
+  if (document.activeElement !== $("#cf-open")) setMoney($("#cf-open"), d.자금잔고 || 0);
   if (document.activeElement !== $("#cf-warn")) $("#cf-warn").value = d.경고일수 || 2;
 
   $("#fd-list").innerHTML = (d.자금기록 || []).length ? d.자금기록.map(f =>
@@ -782,7 +788,7 @@ $("#fd-sub").addEventListener("click", () => fundSubmit("지출"));
 $("#cf-save").addEventListener("click", async () => {
   try {
     renderAdmin(await adminCall("setCfg", {
-      자금초기잔고: moneyVal($("#cf-open")),
+      현재잔고: moneyVal($("#cf-open")),
       미반납경고일수: Number($("#cf-warn").value) || 2
     }));
     toast("설정을 저장했습니다");
