@@ -228,7 +228,7 @@ details[open] summary::before{content:"− "}
     <h2>문파에 빨시를 팔고 싶다면</h2>
     <div class="row2">
       <div><label for="sl-qty">수량</label><input id="sl-qty" type="number" inputmode="numeric" min="1"></div>
-      <div><label for="sl-price">개당 희망가</label><input id="sl-price" type="number" inputmode="numeric" min="0"></div>
+      <div><label for="sl-price">개당 희망가</label><input id="sl-price" class="money" inputmode="numeric" placeholder="예: 10,000"></div>
     </div>
     <label for="sl-memo">비고 (선택)</label>
     <input id="sl-memo" placeholder="예: 오늘 저녁까지 가능">
@@ -293,7 +293,10 @@ details[open] summary::before{content:"− "}
     <div class="stats">
       <div class="stat"><div class="k">현재 재고</div><div class="v num" id="b-stock">0</div></div>
       <div class="stat"><div class="k">자금 잔고</div><div class="v num" id="b-fund" style="color:var(--gold)">0</div></div>
+      <div class="stat"><div class="k">누적 수입</div><div class="v num" id="b-in">0</div></div>
+      <div class="stat"><div class="k">빨시 매입</div><div class="v num" id="b-buy">0</div></div>
     </div>
+    <div id="b-bysrc" class="tiny"></div>
   </div>
 
   <div class="card wide">
@@ -330,7 +333,7 @@ details[open] summary::before{content:"− "}
       <input id="ad-seller" placeholder="누구에게 샀나요">
       <div class="row2" style="margin-top:12px">
         <div><label for="ad-qty" style="margin-top:0">수량</label><input id="ad-qty" type="number" inputmode="numeric"></div>
-        <div><label for="ad-unit" style="margin-top:0">개당 단가</label><input id="ad-unit" type="number" inputmode="numeric"></div>
+        <div><label for="ad-unit" style="margin-top:0">개당 단가</label><input id="ad-unit" class="money" inputmode="numeric" placeholder="예: 200"></div>
       </div>
       <label for="ad-inmemo">비고 (선택)</label>
       <input id="ad-inmemo">
@@ -355,6 +358,49 @@ details[open] summary::before{content:"− "}
     <div class="card wide">
       <h2>전체 인원 현황</h2>
       <ul class="list" id="ad-all"><li class="empty">기록이 없습니다</li></ul>
+    </div>
+
+    <div class="card wide">
+      <h2>문파 자금</h2>
+      <div class="stats">
+        <div class="stat"><div class="k">현재 잔고</div><div class="v num" id="fd-bal" style="color:var(--gold)">0</div></div>
+        <div class="stat"><div class="k">누적 수입</div><div class="v num" id="fd-in">0</div></div>
+        <div class="stat"><div class="k">빨시 매입</div><div class="v num" id="fd-buy">0</div></div>
+        <div class="stat"><div class="k">기타 지출</div><div class="v num" id="fd-out">0</div></div>
+      </div>
+
+      <label>어디서 들어온 자금인가요</label>
+      <div class="chips" id="fd-src">
+        <div class="chip" role="button" tabindex="0" aria-pressed="true" data-v="백호의성">백호</div>
+        <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="현무의성">현무</div>
+        <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="청룡의성">청룡</div>
+        <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="주작의성">주작</div>
+        <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="기타">기타</div>
+      </div>
+
+      <div class="row2" style="margin-top:12px">
+        <div><label for="fd-amt" style="margin-top:0">금액</label><input id="fd-amt" class="money" inputmode="numeric" placeholder="예: 1,200,000"></div>
+        <div><label for="fd-date" style="margin-top:0">날짜</label><input id="fd-date" type="date"></div>
+      </div>
+      <label for="fd-memo">메모 (선택)</label>
+      <input id="fd-memo" placeholder="예: 8/31 성 수입">
+      <div class="row2" style="margin-top:14px">
+        <button class="go" id="fd-add" style="margin-top:0;background:var(--green)">수입 넣기</button>
+        <button class="go" id="fd-sub" style="margin-top:0;background:var(--red)">지출 넣기</button>
+      </div>
+
+      <div id="fd-bysrc" class="tiny"></div>
+      <ul class="list" id="fd-list" style="margin-top:10px"><li class="empty">자금 기록이 없습니다</li></ul>
+    </div>
+
+    <div class="card">
+      <h2>문파 설정</h2>
+      <label for="cf-open">자금 초기잔고</label>
+      <input id="cf-open" class="money" inputmode="numeric" placeholder="앱 쓰기 시작할 때 있던 금액">
+      <label for="cf-warn">미반납 경고 일수</label>
+      <input id="cf-warn" type="number" inputmode="numeric" min="1" placeholder="예: 2">
+      <button class="go" id="cf-save" style="background:var(--blue)">설정 저장하기</button>
+      <p class="tiny">초기잔고는 앱을 쓰기 시작한 시점의 문파 자금입니다. 이후 수입과 지출은 위에서 기록하세요.</p>
     </div>
 
     <div class="card">
@@ -406,6 +452,19 @@ function call(action, payload){
   });
 }
 
+/* 금액 입력칸: 타이핑하는 즉시 콤마 */
+function moneyVal(el){ return Number(String(el.value).replace(/[^0-9]/g, "")) || 0; }
+function setMoney(el, v){ el.value = v ? Number(v).toLocaleString("ko-KR") : ""; }
+document.addEventListener("input", e => {
+  const el = e.target;
+  if (!el.classList || !el.classList.contains("money")) return;
+  const raw = String(el.value).replace(/[^0-9]/g, "");
+  const before = el.value.length - el.selectionStart;
+  el.value = raw ? Number(raw).toLocaleString("ko-KR") : "";
+  const pos = Math.max(0, el.value.length - before);
+  try { el.setSelectionRange(pos, pos); } catch(_){}
+});
+
 let toastTimer;
 function toast(msg, err){
   const t = $("#toast");
@@ -440,6 +499,7 @@ const type = chipGroup("#f-type", v => {
   b.className = "go" + (v === "반납" ? " ret" : "");
 });
 const path = chipGroup("#f-path");
+const fundSrc = chipGroup("#fd-src");
 
 function setChip(sel, val){
   Array.from($(sel).children).forEach(c => c.setAttribute("aria-pressed", c.dataset.v === val ? "true" : "false"));
@@ -508,7 +568,7 @@ $("#sl-save").addEventListener("click", async () => {
   if (!name) return toast("위에 캐릭명을 먼저 적어주세요", true);
   if (!(qty > 0)) return toast("수량을 적어주세요", true);
   try {
-    await call("sale", { 캐릭명: name, 수량: qty, 희망단가: Number($("#sl-price").value) || 0, 비고: $("#sl-memo").value.trim() });
+    await call("sale", { 캐릭명: name, 수량: qty, 희망단가: moneyVal($("#sl-price")), 비고: $("#sl-memo").value.trim() });
     $("#sl-qty").value = ""; $("#sl-price").value = ""; $("#sl-memo").value = "";
     toast("판매 신청을 보냈습니다");
   } catch(e){ toast(e.message, true); }
@@ -591,6 +651,9 @@ async function loadBoard(){
 
     $("#b-stock").textContent = fmt(b.재고);
     $("#b-fund").textContent = fmt(b.자금잔고);
+    $("#b-in").textContent = fmt(b.자금수입 || 0);
+    $("#b-buy").textContent = fmt(b.빨시매입 || 0);
+    $("#b-bysrc").innerHTML = bySrcHtml(b.성별수입);
 
     const ul = $("#b-list");
     ul.innerHTML = b.미반납.length ? b.미반납.map((p, i) => {
@@ -601,6 +664,13 @@ async function loadBoard(){
         <div class="amt plus num">${fmt(p.보유)}</div></li>`;
     }).join("") : '<li class="empty">모두 정산됐습니다</li>';
   } catch(e){ toast(e.message, true); }
+}
+
+function bySrcHtml(m){
+  const keys = Object.keys(m || {});
+  if (!keys.length) return "";
+  return "성별 누적 수입 · " + keys.sort((a,b) => m[b] - m[a])
+    .map(k => k.replace("의성", "") + " " + fmt(m[k])).join(" / ");
 }
 
 /* 운영진 */
@@ -647,6 +717,22 @@ function renderAdmin(d){
       <button class="sm no" data-cancel="${r.기록ID}">취소</button></li>`
   ).join("") : '<li class="empty">오늘 기록이 없습니다</li>';
 
+  $("#fd-bal").textContent = fmt(d.자금잔고);
+  $("#fd-in").textContent = fmt(d.자금수입 || 0);
+  $("#fd-buy").textContent = fmt(d.빨시매입 || 0);
+  $("#fd-out").textContent = fmt(d.자금지출 || 0);
+  $("#fd-bysrc").innerHTML = bySrcHtml(d.성별수입);
+  if (!$("#fd-date").value) $("#fd-date").value = d.today;
+  if (document.activeElement !== $("#cf-open")) setMoney($("#cf-open"), d.초기잔고 || 0);
+  if (document.activeElement !== $("#cf-warn")) $("#cf-warn").value = d.경고일수 || 2;
+
+  $("#fd-list").innerHTML = (d.자금기록 || []).length ? d.자금기록.map(f =>
+    `<li class="li"><div class="main"><div class="nm">${f.출처 || "기타"}${f.유형 === "지출" ? " · 지출" : ""}</div>
+      <div class="sub">${f.일자}${f.메모 ? " · " + f.메모 : ""}</div></div>
+      <div class="amt ${f.유형 === "지출" ? "plus" : "minus"} num">${f.유형 === "지출" ? "−" : "+"}${fmt(f.금액)}</div>
+      <button class="sm no" data-fund="${f.기록ID}">삭제</button></li>`
+  ).join("") : '<li class="empty">자금 기록이 없습니다</li>';
+
   $("#ad-all").innerHTML = d.전체.length ? d.전체.map(p =>
     `<li class="li"><div class="main"><div class="nm">${p.캐릭명}</div>
       <div class="sub">받음 ${fmt(p.받음)} · 반납 ${fmt(p.반납)} · 소진율 ${p.소진율}%${p.미반납일수 ? " · " + p.미반납일수 + "일째" : ""}</div></div>
@@ -671,10 +757,35 @@ $("#ad-in-save").addEventListener("click", async () => {
   if (!(qty > 0)) return toast("수량을 적어주세요", true);
   try {
     renderAdmin(await adminCall("stockIn", {
-      판매자: seller, 수량: qty, 개당단가: Number($("#ad-unit").value) || 0, 비고: $("#ad-inmemo").value.trim()
+      판매자: seller, 수량: qty, 개당단가: moneyVal($("#ad-unit")), 비고: $("#ad-inmemo").value.trim()
     }));
     $("#ad-seller").value = ""; $("#ad-qty").value = ""; $("#ad-inmemo").value = "";
     toast("입고를 등록했습니다");
+  } catch(e){ toast(e.message, true); }
+});
+
+async function fundSubmit(type){
+  const amt = moneyVal($("#fd-amt"));
+  if (!(amt > 0)) return toast("금액을 입력하세요", true);
+  try {
+    renderAdmin(await adminCall("fundAdd", {
+      유형: type, 출처: fundSrc.get(), 금액: amt,
+      일자: $("#fd-date").value || undefined, 메모: $("#fd-memo").value.trim()
+    }));
+    $("#fd-amt").value = ""; $("#fd-memo").value = "";
+    toast(type + " " + fmt(amt) + "원을 기록했습니다");
+  } catch(e){ toast(e.message, true); }
+}
+$("#fd-add").addEventListener("click", () => fundSubmit("수입"));
+$("#fd-sub").addEventListener("click", () => fundSubmit("지출"));
+
+$("#cf-save").addEventListener("click", async () => {
+  try {
+    renderAdmin(await adminCall("setCfg", {
+      자금초기잔고: moneyVal($("#cf-open")),
+      미반납경고일수: Number($("#cf-warn").value) || 2
+    }));
+    toast("설정을 저장했습니다");
   } catch(e){ toast(e.message, true); }
 });
 
@@ -696,6 +807,10 @@ $("#ad-body").addEventListener("click", async e => {
   try {
     if (b.dataset.sale) renderAdmin(await adminCall("saleAct", { 신청ID: b.dataset.sale, 결정: b.dataset.act }));
     else if (b.dataset.fix) renderAdmin(await adminCall("fixAct", { 요청ID: b.dataset.fix, 결정: b.dataset.act }));
+    else if (b.dataset.fund) {
+      if (!confirm("이 자금 기록을 지울까요?")) return;
+      renderAdmin(await adminCall("fundDel", { 기록ID: b.dataset.fund }));
+    }
     else if (b.dataset.cancel) {
       if (!confirm("이 기록을 취소 처리할까요? 시트에는 취소로 남습니다.")) return;
       renderAdmin(await adminCall("cancel", { 기록ID: b.dataset.cancel }));
