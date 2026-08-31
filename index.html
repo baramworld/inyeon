@@ -92,7 +92,12 @@ button.sm.no{border-color:var(--red);color:var(--red)}
 .li:last-child{border-bottom:0}
 .li .main{flex:1;min-width:0}
 .li .nm{font-weight:600;font-size:14.5px}
-.li .sub{font-size:12.5px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li .sub{
+  font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.45;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;
+}
+.li.open .sub{-webkit-line-clamp:unset;overflow:visible}
+.li .main{cursor:pointer}
 .li .amt{font-size:17px;font-weight:700}
 .amt.plus{color:var(--red)} .amt.minus{color:var(--green)}
 .rank{width:24px;text-align:center;font-size:13px;color:var(--muted);font-weight:700}
@@ -153,7 +158,6 @@ nav button[hidden]{display:none}
   .card{margin-bottom:0}
   .wide{grid-column:1 / -1}
   .stats{grid-template-columns:repeat(4,minmax(0,1fr))}
-  .li .sub{white-space:normal}
   .hero .n{font-size:64px}
   #ad-login{max-width:420px}
   #ad-body.on{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
@@ -652,7 +656,8 @@ $("#f-save").addEventListener("click", async () => {
   if (!name) return toast("캐릭명을 적어주세요", true);
   if (t !== "사용" && !(qty > 0)) return toast("수량을 적어주세요", true);
   const btn = $("#f-save");
-  btn.disabled = true;
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = "저장 중…";
   try {
     const r = await call("submit", {
       캐릭명: name, 구분: kind.get(), 실사용자: $("#f-driver").value.trim(),
@@ -675,12 +680,13 @@ $("#f-save").addEventListener("click", async () => {
       toast(t + " " + fmt(t === "사용" ? r.사용 : qty) + "개 저장 · 현재 보유 " + fmt(r.보유) + "개");
     }
   } catch(e){ toast(e.message, true); }
-  btn.disabled = false;
+  btn.disabled = false; btn.textContent = label;
 });
 
 $("#f-ask-used").addEventListener("click", async () => {
   const name = $("#f-name").value.trim();
   $("#f-ask").style.display = "none";
+  if (busy) return;
   try {
     const r = await call("submit", {
       캐릭명: name, 구분: kind.get(), 실사용자: $("#f-driver").value.trim(),
@@ -963,6 +969,14 @@ $("#ad-body").addEventListener("click", async e => {
     } else return;
     toast("처리했습니다");
   } catch(err){ toast(err.message, true); }
+});
+
+/* 목록의 설명이 길면 탭해서 펼치기 */
+document.addEventListener("click", e => {
+  if (e.target.closest("button") || e.target.closest("input")) return;
+  const main = e.target.closest(".li .main");
+  if (!main) return;
+  main.parentElement.classList.toggle("open");
 });
 
 /* ===== 클립보드 ===== */
