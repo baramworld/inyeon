@@ -2,1234 +2,282 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#101725">
-<title>문파 빨시 장부</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14161a">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="icon-192.png">
+<title>문파 빨시 장부</title>
 <style>
-:root{
-  --bg:#101725; --surface:#18202f;
-  --line:#2b3750; --text:#e8edf6; --muted:#8a9ab4;
-  --red:#e8453c; --gold:#d9a441; --green:#3fa97a; --blue:#4d8fd6;
-}
+:root{--bg:#f5f5f7;--card:#fff;--tx:#1b1d21;--sub:#6b7280;--line:#e3e5e9;--pri:#d63c3c;--pri-t:#fff;--ok:#1f9d55;--warn:#c47a00;--chip:#eceef2}
+@media(prefers-color-scheme:dark){:root{--bg:#14161a;--card:#1d2026;--tx:#eceef2;--sub:#9aa1ad;--line:#2b2f37;--chip:#2a2e36;--ok:#3ecf80;--warn:#f0b04a}}
 *{box-sizing:border-box}
-html,body{margin:0;padding:0}
-body{
-  background:var(--bg); color:var(--text);
-  font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic","맑은 고딕",sans-serif;
-  font-size:15px; line-height:1.5;
-  padding-bottom:calc(64px + env(safe-area-inset-bottom));
-  -webkit-tap-highlight-color:transparent;
-}
-.num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-header{
-  position:sticky;top:0;z-index:20;background:rgba(16,23,37,.94);
-  backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
-  padding:12px 16px calc(12px);
-}
-.hrow{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
-.htitle{font-size:16px;font-weight:700;letter-spacing:-.01em}
-.hdate{font-size:13px;color:var(--muted)}
-.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
-.tag.open{background:rgba(63,169,122,.16);color:var(--green)}
-.tag.closed{background:rgba(232,69,60,.16);color:var(--red)}
-main{padding:16px 16px 24px;max-width:560px;margin:0 auto}
-section{display:none}
-section.on{display:block}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
-.card h2{margin:0 0 12px;font-size:14px;font-weight:600;color:var(--muted)}
-label{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px}
-label:first-of-type{margin-top:0}
-input,textarea,select{
-  width:100%;background:#131a29;border:1px solid var(--line);color:var(--text);
-  border-radius:10px;padding:12px;font-size:16px;font-family:inherit;
-}
-input:focus,textarea:focus,select:focus{outline:2px solid var(--blue);outline-offset:1px;border-color:transparent}
-textarea{min-height:64px;resize:vertical}
-.chips{display:flex;gap:8px;flex-wrap:wrap}
-.chip{
-  flex:1 1 auto;min-width:72px;text-align:center;padding:11px 10px;border-radius:10px;
-  background:#131a29;border:1px solid var(--line);color:var(--muted);
-  font-size:14px;font-weight:600;cursor:pointer;user-select:none;
-}
-.chip[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:#fff}
-.chip.red[aria-pressed="true"]{background:var(--red);border-color:var(--red)}
-.chip.green[aria-pressed="true"]{background:var(--green);border-color:var(--green)}
-.chip.gold[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:#101725}
-.ask{margin-top:16px;padding:14px;border-radius:12px;background:rgba(217,164,65,.12);border:1px solid rgba(217,164,65,.35)}
-.asktitle{font-size:14.5px;font-weight:600}
-button.go{
-  width:100%;margin-top:18px;padding:15px;border:0;border-radius:12px;
-  background:var(--red);color:#fff;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;
-}
-button.go.ret{background:var(--green)}
-button.go:disabled{opacity:.5}
-button.sm{
-  padding:8px 12px;border-radius:8px;border:1px solid var(--line);
-  background:#131a29;color:var(--text);font-size:13px;font-family:inherit;cursor:pointer;
-}
-button.sm.ok{border-color:var(--green);color:var(--green)}
-button.sm.no{border-color:var(--red);color:var(--red)}
-.hero{text-align:center;padding:6px 0 2px}
-.hero .n{font-size:56px;font-weight:800;line-height:1;letter-spacing:-.04em}
-.hero .u{font-size:15px;color:var(--muted);margin-left:4px;font-weight:500}
-.hero .cap{font-size:13px;color:var(--muted);margin-top:8px}
-.warn{margin-top:12px;padding:11px 12px;border-radius:10px;background:rgba(232,69,60,.12);color:#ff8b84;font-size:13.5px}
-.gauge{margin-top:4px}
-.gtrack{height:14px;border-radius:7px;background:#131a29;border:1px solid var(--line);overflow:hidden;display:flex}
-.gfill{background:var(--blue);height:100%}
-.ggap{background:repeating-linear-gradient(45deg,rgba(232,69,60,.55) 0 6px,rgba(232,69,60,.18) 6px 12px);height:100%;flex:1}
-.glab{display:flex;justify-content:space-between;margin-top:8px;font-size:13px;color:var(--muted)}
-.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.stat{background:#131a29;border:1px solid var(--line);border-radius:11px;padding:12px}
-.stat .k{font-size:12px;color:var(--muted)}
-.stat .v{font-size:22px;font-weight:700;margin-top:3px}
-.list{margin:0;padding:0;list-style:none}
-.li{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
-.li:last-child{border-bottom:0}
-.li .main{flex:1;min-width:0}
-.li .nm{font-weight:600;font-size:14.5px}
-.li .sub{
-  font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.45;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;
-}
-.li.open .sub{-webkit-line-clamp:unset;overflow:visible}
-.li .main{cursor:pointer}
-.li .amt{font-size:17px;font-weight:700}
-.amt.plus{color:var(--red)} .amt.minus{color:var(--green)}
-.rank{width:24px;text-align:center;font-size:13px;color:var(--muted);font-weight:700}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--red);flex:none}
-.empty{color:var(--muted);font-size:13.5px;padding:14px 0;text-align:center}
-nav{
-  position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;
-  background:rgba(16,23,37,.97);backdrop-filter:blur(8px);border-top:1px solid var(--line);
-  padding-bottom:env(safe-area-inset-bottom);
-}
-nav button{
-  flex:1;background:none;border:0;color:var(--muted);font-family:inherit;
-  font-size:12px;padding:10px 4px 12px;cursor:pointer;display:flex;flex-direction:column;gap:4px;align-items:center;
-}
-nav button .ic{font-size:19px;line-height:1}
-nav button[aria-current="true"]{color:var(--text)}
-.toast{
-  position:fixed;left:50%;transform:translateX(-50%);bottom:calc(78px + env(safe-area-inset-bottom));
-  background:#f2f5fb;color:#101725;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:600;
-  z-index:50;opacity:0;pointer-events:none;transition:opacity .18s;max-width:88%;text-align:center;
-}
-.toast.on{opacity:1}
-.toast.err{background:var(--red);color:#fff}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-details{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
-summary{cursor:pointer;font-size:13.5px;color:var(--muted);list-style:none}
-summary::-webkit-details-marker{display:none}
-summary::before{content:"+ ";font-weight:700}
-details[open] summary::before{content:"− "}
-.tiny{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.55}
-.setup{padding:24px 16px;max-width:520px;margin:0 auto}
-nav button[hidden]{display:none}
-#ad-body{display:none}
-#ad-body.on{display:block}
-#ad-login.off{display:none}
-#refresh{
-  background:#131a29;border:1px solid var(--line);color:var(--muted);
-  width:32px;height:32px;border-radius:9px;font-size:16px;cursor:pointer;line-height:1;
-}
-#refresh.spin{animation:sp .7s linear infinite;color:var(--text)}
-@keyframes sp{to{transform:rotate(360deg)}}
-
-/* 넓은 화면 */
-@media (min-width:820px){
-  body{padding-bottom:24px}
-  main{max-width:1180px;padding:22px 28px 40px}
-  header{padding:14px 28px}
-  header .hrow,header .hdate{max-width:1180px;margin:0 auto}
-  nav{
-    position:sticky;top:0;left:auto;right:auto;bottom:auto;
-    max-width:1180px;margin:0 auto 18px;border-top:0;border-bottom:1px solid var(--line);
-    background:transparent;backdrop-filter:none;
-  }
-  nav button{flex:0 0 auto;flex-direction:row;gap:7px;font-size:14px;padding:12px 20px}
-  nav button[aria-current="true"]{box-shadow:inset 0 -2px 0 var(--blue)}
-  main{display:block}
-  section.on{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
-  .card{margin-bottom:0}
-  .wide{grid-column:1 / -1}
-  .stats{grid-template-columns:repeat(4,minmax(0,1fr))}
-  .hero .n{font-size:64px}
-  #ad-login{max-width:420px}
-  #ad-body.on{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
-}
-@media (min-width:1180px){
-  #ad-body.on{grid-template-columns:repeat(3,minmax(0,1fr))}
-}
-@media (min-width:1180px){
-  section.on{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .half{grid-column:span 2}
-}
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:15px}
+body{padding:env(safe-area-inset-top) 0 calc(64px + env(safe-area-inset-bottom))}
+main{max-width:640px;margin:0 auto;padding:12px}
+h2{font-size:13px;color:var(--sub);margin:16px 4px 8px;font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px}
+.big{font-size:44px;font-weight:800;letter-spacing:-1px;line-height:1.1}
+.sub{color:var(--sub);font-size:13px}
+.row{display:flex;gap:8px;align-items:center}
+.row.wrap{flex-wrap:wrap}
+.grow{flex:1;min-width:0}
+input,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--tx);font-size:15px;font-family:inherit}
+input[type=number]{-moz-appearance:textfield}
+button{font-family:inherit;font-size:14px;border:0;border-radius:10px;padding:10px 14px;background:var(--chip);color:var(--tx);cursor:pointer}
+button.pri{background:var(--pri);color:var(--pri-t);font-weight:700}
+button.big-btn{width:100%;padding:14px;font-size:16px}
+button.sm{padding:6px 10px;font-size:13px}
+button.on{background:var(--pri);color:var(--pri-t)}
+button.ghost{background:transparent;border:1px solid var(--line)}
+.chip{padding:8px 12px;border-radius:999px;background:var(--chip);font-size:14px}
+.chip.on{background:var(--pri);color:var(--pri-t)}
+.chip small{opacity:.7;margin-left:4px}
+.list .it{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.list .it:last-child{border-bottom:0}
+.tag{font-size:11px;padding:2px 7px;border-radius:6px;background:var(--chip);color:var(--sub)}
+.t-불출{color:var(--pri)}.t-회수{color:var(--ok)}.t-입고{color:var(--warn)}
+.del{opacity:.4;text-decoration:line-through}
+.num{font-variant-numeric:tabular-nums;font-weight:700}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border-radius:0;background:transparent;padding:14px 0;color:var(--sub);font-weight:600}
+nav button[aria-current=true]{color:var(--pri)}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:9}
+#toast.show{opacity:1}#toast.err{background:#b3261e}
+.hide{display:none!important}
+.ok{color:var(--ok)}.bad{color:var(--pri)}
 </style>
 </head>
 <body>
-
-<header>
-  <div class="hrow">
-    <span class="htitle">문파 빨시 장부</span>
-    <span style="display:flex;align-items:center;gap:8px">
-      <span id="hstate"></span>
-      <button id="refresh" title="새로고침" aria-label="새로고침">⟳</button>
-    </span>
-  </div>
-  <div class="hdate" id="hdate">불러오는 중</div>
-</header>
-
 <main>
-
-<!-- 기록 -->
-<section id="s-write" class="on">
-  <div class="card">
-    <h2>오늘 받거나 반납한 빨시를 적어주세요</h2>
-
-    <label for="f-name">캐릭명</label>
-    <input id="f-name" list="charlist" autocomplete="off" placeholder="인게임에서 받은 그 캐릭">
-    <datalist id="charlist"></datalist>
-
-    <label>구분</label>
-    <div class="chips" id="f-kind">
-      <div class="chip" role="button" tabindex="0" aria-pressed="true" data-v="일반">일반 문원</div>
-      <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="용병">용병</div>
-      <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="운영진">운영진</div>
-    </div>
-
-    <div id="f-driver-wrap" style="display:none">
-      <label for="f-driver">실사용자 (지금 이 캐릭을 조종하는 사람)</label>
-      <input id="f-driver" autocomplete="off" placeholder="아이디 주인이 아니라 실제 쓰는 사람">
-    </div>
-
-    <label>무엇을 하나요</label>
-    <div class="chips" id="f-type">
-      <div class="chip red" role="button" tabindex="0" aria-pressed="true" data-v="받음">받음</div>
-      <div class="chip green" role="button" tabindex="0" aria-pressed="false" data-v="반납">반납</div>
-      <div class="chip gold" role="button" tabindex="0" aria-pressed="false" data-v="사용">다 씀</div>
-    </div>
-
-    <div id="f-path-wrap">
-      <label>어디서 받았나요</label>
-      <div class="chips" id="f-path">
-        <div class="chip" role="button" tabindex="0" aria-pressed="true" data-v="문파지급">문파 지급</div>
-        <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="개인지원">개인 지원</div>
-        <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="자비구매">자비 구매</div>
-      </div>
-    </div>
-
-    <div id="f-qty-wrap">
-      <label for="f-qty">수량</label>
-      <input id="f-qty" type="number" inputmode="numeric" min="1" placeholder="개수">
-    </div>
-    <p class="tiny" id="f-alluse" style="display:none">지금 들고 있는 빨시 전부를 쓴 것으로 기록합니다.</p>
-
-    <label for="f-memo">비고 (선택)</label>
-    <input id="f-memo" placeholder="예: 내일 반납, 공짜로 받음">
-
-    <button class="go" id="f-save">받음 기록하기</button>
-
-    <div id="f-ask" class="ask" style="display:none">
-      <div class="asktitle" id="f-ask-title">남은 빨시는 어떻게 됐나요?</div>
-      <div class="row2" style="margin-top:12px">
-        <button class="go" id="f-ask-used" style="margin-top:0;background:var(--gold)">공성에서 다 썼습니다</button>
-        <button class="go" id="f-ask-keep" style="margin-top:0;background:#131a29;border:1px solid var(--line);color:var(--text)">아직 갖고 있습니다</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>문파에 빨시를 팔고 싶다면</h2>
-    <div class="row2">
-      <div><label for="sl-qty">수량</label><input id="sl-qty" type="number" inputmode="numeric" min="1"></div>
-      <div><label for="sl-price">개당 희망가</label><input id="sl-price" class="money" inputmode="numeric" placeholder="예: 10,000"></div>
-    </div>
-    <label for="sl-memo">비고 (선택)</label>
-    <input id="sl-memo" placeholder="예: 오늘 저녁까지 가능">
-    <button class="go" id="sl-save" style="background:var(--gold)">판매 신청하기</button>
-    <p class="tiny">운영진이 승인하면 입고로 잡히고 문파 자금에서 빠집니다.</p>
-  </div>
-</section>
-
-<!-- 내 현황 -->
-<section id="s-me">
-  <div class="card">
-    <h2 id="me-title">내 현황</h2>
-    <div class="hero">
-      <div><span class="n num" id="me-hold">0</span><span class="u">개 보유</span></div>
-      <div class="cap" id="me-cap">아직 기록이 없습니다</div>
-    </div>
-    <div id="me-warn"></div>
-    <div class="stats" style="margin-top:16px">
-      <div class="stat"><div class="k">오늘 받음</div><div class="v num" id="me-today-in">0</div></div>
-      <div class="stat"><div class="k">오늘 반납</div><div class="v num" id="me-today-out">0</div></div>
-      <div class="stat"><div class="k">누적 받음</div><div class="v num" id="me-in">0</div></div>
-      <div class="stat"><div class="k">누적 사용</div><div class="v num" id="me-used">0</div></div>
-      <div class="stat"><div class="k">누적 반납</div><div class="v num" id="me-back">0</div></div>
-      <div class="stat"><div class="k">소진율</div><div class="v num" id="me-rate">0%</div></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>문파에 판 빨시</h2>
-    <div class="stats">
-      <div class="stat"><div class="k">누적 판매</div><div class="v num" id="me-sold">0</div></div>
-      <div class="stat"><div class="k">받은 금액</div><div class="v num" id="me-sold-won" style="color:var(--gold)">0</div></div>
-    </div>
-    <ul class="list" id="me-sales" style="margin-top:12px"><li class="empty">판매 기록이 없습니다</li></ul>
-    <div id="me-pending"></div>
-  </div>
-
-  <div class="card wide">
-    <h2>최근 기록</h2>
-    <ul class="list" id="me-list"><li class="empty">기록이 없습니다</li></ul>
-    <details>
-      <summary>숫자가 잘못됐나요</summary>
-      <label for="fx-text">무엇이 잘못됐는지 적어주세요</label>
-      <textarea id="fx-text" placeholder="예: 8/31 받음 500개는 50개 오타입니다"></textarea>
-      <button class="go" id="fx-save" style="background:var(--blue)">정정 요청 보내기</button>
-      <p class="tiny">기록은 지워지지 않고 운영진이 확인 후 처리합니다.</p>
-    </details>
-  </div>
-</section>
-
-<!-- 문파 -->
-<section id="s-board">
-  <div class="card">
-    <h2>오늘 불출 대비 기입</h2>
-    <div class="gauge">
-      <div class="gtrack"><div class="gfill" id="g-fill" style="width:0"></div><div class="ggap" id="g-gap"></div></div>
-      <div class="glab"><span id="g-left">기입 0개</span><span id="g-right">총 0개</span></div>
-    </div>
-    <div class="warn" id="g-warn" style="display:none"></div>
-  </div>
-
-  <div class="card">
-    <h2>문파 재고와 자금</h2>
-    <div class="stats">
-      <div class="stat"><div class="k">현재 재고</div><div class="v num" id="b-stock">0</div></div>
-      <div class="stat"><div class="k">자금 잔고</div><div class="v num" id="b-fund" style="color:var(--gold)">0</div></div>
-      <div class="stat"><div class="k">누적 수입</div><div class="v num" id="b-in">0</div></div>
-      <div class="stat"><div class="k">빨시 매입</div><div class="v num" id="b-buy">0</div></div>
-    </div>
-    <div id="b-bysrc" class="tiny"></div>
-  </div>
-
-  <div class="card wide">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-      <h2 style="margin:0">아직 반납 안 한 사람</h2>
-      <button class="sm" id="b-copy">명단 복사</button>
-    </div>
-    <ul class="list" id="b-list" style="margin-top:12px"><li class="empty">모두 정산됐습니다</li></ul>
-  </div>
-</section>
-
-<!-- 운영진 -->
-<section id="s-admin">
-  <div class="card" id="ad-login">
-    <h2>운영진 확인</h2>
-    <label for="ad-pw">비밀번호</label>
-    <input id="ad-pw" type="password" inputmode="numeric" placeholder="설정 시트의 운영진 비밀번호">
-    <button class="go" id="ad-in" style="background:var(--blue)">들어가기</button>
-  </div>
-
-  <div id="ad-body" class="wide">
+  <!-- 최초 설정 -->
+  <section id="setup" class="hide">
     <div class="card">
-      <h2>오늘 총 불출량</h2>
-      <div class="row2">
-        <input id="ad-total" type="number" inputmode="numeric" placeholder="예: 500">
-        <button class="sm" id="ad-total-save" style="padding:12px">저장</button>
-      </div>
-      <div class="glab" style="margin-top:12px">
-        <span id="ad-diff">기입 0 / 총 0</span>
-        <button class="sm" id="ad-close">마감하기</button>
-      </div>
+      <h2 style="margin-top:0">처음 한 번만 연결해요</h2>
+      <p class="sub">Apps Script 웹 앱 배포 URL을 붙여넣어 주세요.</p>
+      <input id="apiIn" placeholder="https://script.google.com/macros/s/.../exec">
+      <button class="pri big-btn" style="margin-top:10px" onclick="saveApi()">연결</button>
     </div>
+  </section>
 
+  <!-- 현황 -->
+  <section id="s-home" class="hide">
     <div class="card">
-      <h2>빨시 사들이기 (입고)</h2>
-      <label for="ad-seller">판매자 캐릭명</label>
-      <input id="ad-seller" placeholder="누구에게 샀나요">
-      <div class="row2" style="margin-top:12px">
-        <div><label for="ad-qty" style="margin-top:0">수량</label><input id="ad-qty" type="number" inputmode="numeric"></div>
-        <div><label for="ad-unit" style="margin-top:0">개당 단가</label><input id="ad-unit" class="money" inputmode="numeric" placeholder="예: 200"></div>
-      </div>
-      <label for="ad-inmemo">비고 (선택)</label>
-      <input id="ad-inmemo">
-      <button class="go" id="ad-in-save" style="background:var(--gold)">입고 등록하기</button>
+      <div class="sub">현재 재고 (빨간시약)</div>
+      <div class="big" id="stock">-</div>
+      <div class="sub" id="chk" style="margin-top:6px"></div>
     </div>
+    <div class="card row">
+      <div class="grow"><div class="sub">오늘 불출</div><div class="num" id="todayOut" style="font-size:22px">-</div></div>
+      <div class="grow"><div class="sub">오늘 회수</div><div class="num" id="todayIn" style="font-size:22px">-</div></div>
+      <div class="grow"><div class="sub">미반납 인원</div><div class="num" id="outCnt" style="font-size:22px">-</div></div>
+    </div>
+    <h2>미반납 (불출 − 회수)</h2>
+    <div class="card list" id="outList"></div>
+  </section>
 
+  <!-- 입력 -->
+  <section id="s-write" class="hide">
     <div class="card">
-      <h2>판매 신청</h2>
-      <ul class="list" id="ad-sales"><li class="empty">대기 중인 신청이 없습니다</li></ul>
+      <div class="row wrap" id="typeChips"></div>
+      <div id="pickArea">
+        <div class="row wrap" id="roleBtns" style="margin-top:12px"></div>
+        <input id="filter" placeholder="이름 검색 / 새 이름 입력" style="margin-top:10px" oninput="renderPick()">
+        <div class="row wrap" id="nameChips" style="margin-top:10px;max-height:190px;overflow:auto"></div>
+        <div class="list" id="selList" style="margin-top:6px"></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div class="grow"><div class="sub" id="qLabel">수량 (전체 적용)</div><input id="q0" type="number" inputmode="numeric" min="0" oninput="applyQ()"></div>
+      </div>
+      <input id="memo" placeholder="비고 (선택)" style="margin-top:10px">
+      <button class="pri big-btn" style="margin-top:12px" onclick="submitRec()">저장</button>
     </div>
+  </section>
 
+  <!-- 기록 -->
+  <section id="s-log" class="hide">
+    <input id="logQ" placeholder="이름 검색" oninput="renderLog()">
+    <div class="card list" id="logList" style="margin-top:10px"></div>
+  </section>
+
+  <!-- 관리 -->
+  <section id="s-admin" class="hide">
+    <h2>재고 검산</h2>
     <div class="card">
-      <h2>정정 요청</h2>
-      <ul class="list" id="ad-fixes"><li class="empty">대기 중인 요청이 없습니다</li></ul>
+      <p class="sub" style="margin-top:0">카톡으로 받은 "남은 수량"을 적으면 계산값과 비교해서 남겨요.</p>
+      <div class="row"><input id="chkQ" type="number" inputmode="numeric" placeholder="보고 수량"><input id="chkM" placeholder="메모"></div>
+      <button class="big-btn" style="margin-top:10px" onclick="submitCheck()">검산 기록</button>
+      <div class="list" id="chkList" style="margin-top:8px"></div>
     </div>
-
-    <div class="card wide">
-      <h2>오늘 기록</h2>
-      <ul class="list" id="ad-today"><li class="empty">오늘 기록이 없습니다</li></ul>
-    </div>
-
-    <div class="card wide">
-      <h2>전체 인원 현황</h2>
-      <ul class="list" id="ad-all"><li class="empty">기록이 없습니다</li></ul>
-    </div>
-
-    <div class="card wide">
-      <h2>문파 자금</h2>
-      <div class="stats">
-        <div class="stat"><div class="k">현재 잔고</div><div class="v num" id="fd-bal" style="color:var(--gold)">0</div></div>
-        <div class="stat"><div class="k">누적 수입</div><div class="v num" id="fd-in">0</div></div>
-        <div class="stat"><div class="k">빨시 매입</div><div class="v num" id="fd-buy">0</div></div>
-        <div class="stat"><div class="k">기타 지출</div><div class="v num" id="fd-out">0</div></div>
-      </div>
-
-      <label>어디서 들어온 자금인가요</label>
-      <div class="chips" id="fd-src">
-        <div class="chip" role="button" tabindex="0" aria-pressed="true" data-v="백호의성">백호</div>
-        <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="현무의성">현무</div>
-        <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="청룡의성">청룡</div>
-        <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="주작의성">주작</div>
-        <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="기타">기타</div>
-      </div>
-
-      <div class="row2" style="margin-top:12px">
-        <div><label for="fd-amt" style="margin-top:0">금액</label><input id="fd-amt" class="money" inputmode="numeric" placeholder="예: 1,200,000"></div>
-        <div><label for="fd-date" style="margin-top:0">날짜</label><input id="fd-date" type="date"></div>
-      </div>
-      <label for="fd-memo">메모 (선택)</label>
-      <input id="fd-memo" placeholder="예: 8/31 성 수입">
-      <div class="row2" style="margin-top:14px">
-        <button class="go" id="fd-add" style="margin-top:0;background:var(--green)">수입 넣기</button>
-        <button class="go" id="fd-sub" style="margin-top:0;background:var(--red)">지출 넣기</button>
-      </div>
-
-      <div id="fd-bysrc" class="tiny"></div>
-      <ul class="list" id="fd-list" style="margin-top:10px"><li class="empty">자금 기록이 없습니다</li></ul>
-    </div>
-
+    <h2>명단 (직책은 언제든 수정)</h2>
     <div class="card">
-      <h2>문파 설정</h2>
-      <label for="cf-open">현재 총 잔고</label>
-      <input id="cf-open" class="money" inputmode="numeric" placeholder="지금 문파 금고에 있는 실제 금액">
-      <label for="cf-warn">미반납 경고 일수</label>
-      <input id="cf-warn" type="number" inputmode="numeric" min="1" placeholder="예: 2">
-      <button class="go" id="cf-save" style="background:var(--blue)">설정 저장하기</button>
-      <p class="tiny">지금 금고에 실제로 있는 금액을 넣으면 그 값에 맞춰집니다. 숫자가 어긋났을 때 여기서 다시 맞추세요. 이후 수입·지출은 위 자금 칸에서 기록하면 자동으로 반영됩니다.</p>
+      <div id="rosterEd"></div>
+      <div class="row" style="margin-top:10px"><button onclick="addRow()">+ 추가</button><button class="pri grow" onclick="saveRoster()">명단 저장</button></div>
     </div>
-
-    <div class="card">
-      <h2>운영진 비밀번호 바꾸기</h2>
-      <label for="ad-newpw">새 비밀번호</label>
-      <input id="ad-newpw" type="text" autocomplete="off" placeholder="4자 이상">
-      <label for="ad-newpw2">한 번 더</label>
-      <input id="ad-newpw2" type="text" autocomplete="off">
-      <button class="go" id="ad-pw-save" style="background:var(--blue)">비밀번호 바꾸기</button>
-      <p class="tiny">바꾸면 기존 비밀번호는 즉시 못 씁니다. 운영진에게 새 번호를 알려주세요.</p>
+    <h2>기타</h2>
+    <div class="card row wrap">
+      <button class="ghost sm" onclick="localStorage.removeItem('pw');toast('비밀번호를 다음 저장 때 다시 물어요')">비밀번호 다시 입력</button>
+      <button class="ghost sm" onclick="if(confirm('연결 URL을 바꿀까요?')){localStorage.removeItem('api');location.reload()}">연결 URL 변경</button>
     </div>
-  </div>
-</section>
-
-<!-- 기록 관리 -->
-<section id="s-manage">
-  <div class="card wide">
-    <h2>기록 관리</h2>
-    <div class="chips" id="mg-kind">
-      <div class="chip" role="button" tabindex="0" aria-pressed="true" data-v="불출">불출·반납</div>
-      <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="입고">입고</div>
-      <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="자금">자금</div>
-      <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="판매">판매신청</div>
-      <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="정정">정정요청</div>
-    </div>
-    <label for="mg-q">캐릭명이나 내용으로 찾기</label>
-    <input id="mg-q" autocomplete="off" placeholder="비워두면 전체">
-    <div class="row2" style="margin-top:12px">
-      <div><label for="mg-from" style="margin-top:0">시작일</label><input id="mg-from" type="date"></div>
-      <div><label for="mg-to" style="margin-top:0">종료일</label><input id="mg-to" type="date"></div>
-    </div>
-    <button class="go" id="mg-search" style="background:var(--blue)">찾기</button>
-    <p class="tiny" id="mg-count"></p>
-    <ul class="list" id="mg-list"><li class="empty">찾기를 눌러 기록을 불러오세요</li></ul>
-  </div>
-
-  <div class="card wide">
-    <h2>기간별 통계</h2>
-    <div class="chips" id="st-preset">
-      <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="7">최근 7일</div>
-      <div class="chip" role="button" tabindex="0" aria-pressed="true" data-v="30">최근 30일</div>
-      <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="month">이번 달</div>
-      <div class="chip" role="button" tabindex="0" aria-pressed="false" data-v="all">전체</div>
-    </div>
-    <div class="row2" style="margin-top:12px">
-      <div><label for="st-from" style="margin-top:0">시작일</label><input id="st-from" type="date"></div>
-      <div><label for="st-to" style="margin-top:0">종료일</label><input id="st-to" type="date"></div>
-    </div>
-    <button class="go" id="st-go" style="background:var(--blue)">통계 보기</button>
-
-    <div class="stats" style="margin-top:16px">
-      <div class="stat"><div class="k">총 불출</div><div class="v num" id="st-out">0</div></div>
-      <div class="stat"><div class="k">총 사용</div><div class="v num" id="st-use">0</div></div>
-      <div class="stat"><div class="k">총 반납</div><div class="v num" id="st-back">0</div></div>
-      <div class="stat"><div class="k">전체 소진율</div><div class="v num" id="st-rate">0%</div></div>
-      <div class="stat"><div class="k">하루 평균 불출</div><div class="v num" id="st-avg">0</div></div>
-      <div class="stat"><div class="k">참여 인원</div><div class="v num" id="st-ppl">0</div></div>
-      <div class="stat"><div class="k">빨시 매입</div><div class="v num" id="st-buyq">0</div></div>
-      <div class="stat"><div class="k">매입 금액</div><div class="v num" id="st-buyw" style="color:var(--gold)">0</div></div>
-    </div>
-    <div id="st-fund" class="tiny"></div>
-
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px">
-      <span class="tiny" style="margin:0">인원별 (불출 많은 순)</span>
-      <button class="sm" id="st-copy">통계 복사</button>
-    </div>
-    <ul class="list" id="st-list"><li class="empty">기간을 고르고 통계 보기를 누르세요</li></ul>
-  </div>
-
-  <div class="card">
-    <h2>휴지통</h2>
-    <p class="tiny" style="margin-top:0">지운 기록이 여기 남습니다. 복구를 누르면 원래 자리로 돌아갑니다.</p>
-    <ul class="list" id="tr-list" style="margin-top:10px"><li class="empty">휴지통이 비어 있습니다</li></ul>
-    <details>
-      <summary>휴지통 비우기</summary>
-      <label for="tr-pw">운영진 비밀번호</label>
-      <input id="tr-pw" type="password" autocomplete="off">
-      <button class="go" id="tr-purge" style="background:var(--red)">휴지통 완전히 비우기</button>
-    </details>
-  </div>
-
-  <div class="card">
-    <h2>전체 초기화</h2>
-    <p class="tiny" style="margin-top:0">불출·입고·자금·판매신청·정정요청·일별설정 기록을 모두 지웁니다. 지우기 전에 시트에 백업 탭이 자동으로 만들어집니다.</p>
-    <label style="display:flex;align-items:center;gap:8px;margin-top:12px">
-      <input type="checkbox" id="rs-chars" style="width:auto"> 캐릭명단도 함께 지우기
-    </label>
-    <label for="rs-pw">확인을 위해 운영진 비밀번호를 다시 입력하세요</label>
-    <input id="rs-pw" type="password" autocomplete="off">
-    <button class="go" id="rs-go">전체 초기화하기</button>
-  </div>
-</section>
-
+  </section>
 </main>
 
-<nav>
-  <button data-tab="s-write" aria-current="true"><span class="ic">✎</span>기록</button>
-  <button data-tab="s-me"><span class="ic">◉</span>내 현황</button>
-  <button data-tab="s-board"><span class="ic">▦</span>문파</button>
-  <button data-tab="s-admin"><span class="ic">⚙</span>운영진</button>
-  <button data-tab="s-manage" id="nav-manage" hidden><span class="ic">▤</span>관리</button>
+<nav id="nav" class="hide">
+  <button data-t="s-home" aria-current="true">현황</button>
+  <button data-t="s-write">입력</button>
+  <button data-t="s-log">기록</button>
+  <button data-t="s-admin">관리</button>
 </nav>
-
-<div class="toast" id="toast"></div>
+<div id="toast"></div>
 
 <script>
-/* ===== 여기에 앱스크립트 웹앱 주소를 붙여넣으세요 ===== */
-const API = "https://script.google.com/macros/s/AKfycbxf7_tB8tL-rihI3BeL0oB9K8_Yb9tJa8sCpJmzy044_B2NS_BuzizzzcgyjZdoc5iy/exec";
-/* ================================================== */
-
 const $ = s => document.querySelector(s);
-const $$ = s => Array.from(document.querySelectorAll(s));
-let seq = 0, ADMIN_PW = "", state = {};
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = n => Number(n || 0).toLocaleString("ko-KR");
+let API = localStorage.getItem("api") || "";
+let D = { roster: [], recs: [], checks: [], stock: 0 };
+let type = "불출", sel = [], R = [], tab = "s-home";
 
-function call(action, payload){
-  return new Promise((res, rej) => {
-    if (!API || API.indexOf("http") !== 0) return rej(new Error("앱 주소가 아직 설정되지 않았습니다"));
-    const cb = "__cb" + (++seq);
-    const s = document.createElement("script");
-    const t = setTimeout(() => { cleanup(); rej(new Error("응답이 없습니다. 잠시 후 다시 시도하세요")); }, 20000);
-    function cleanup(){ clearTimeout(t); delete window[cb]; s.remove(); }
-    window[cb] = r => { cleanup(); r && r.ok ? res(r.data) : rej(new Error((r && r.error) || "알 수 없는 오류")); };
-    s.onerror = () => { cleanup(); rej(new Error("서버에 연결하지 못했습니다")); };
-    s.src = API + "?action=" + encodeURIComponent(action)
-      + "&callback=" + cb
-      + "&payload=" + encodeURIComponent(JSON.stringify(payload || {}))
-      + "&_=" + Date.now();
-    document.body.appendChild(s);
-  });
+function toast(m, err) { const t = $("#toast"); t.textContent = m; t.className = "show" + (err ? " err" : ""); clearTimeout(toast.h); toast.h = setTimeout(() => t.className = "", 2200); }
+
+function saveApi() {
+  const v = $("#apiIn").value.trim();
+  if (!/^https:\/\/script\.google\.com\/.+\/exec/.test(v)) return toast("URL 형식을 확인해 주세요", 1);
+  localStorage.setItem("api", v); API = v; boot();
 }
 
-/* 금액 입력칸: 타이핑하는 즉시 콤마 */
-function moneyVal(el){ return Number(String(el.value).replace(/[^0-9]/g, "")) || 0; }
-function setMoney(el, v){ el.value = v ? Number(v).toLocaleString("ko-KR") : ""; }
-document.addEventListener("input", e => {
-  const el = e.target;
-  if (!el.classList || !el.classList.contains("money")) return;
-  const raw = String(el.value).replace(/[^0-9]/g, "");
-  const before = el.value.length - el.selectionStart;
-  el.value = raw ? Number(raw).toLocaleString("ko-KR") : "";
-  const pos = Math.max(0, el.value.length - before);
-  try { el.setSelectionRange(pos, pos); } catch(_){}
-});
-
-let toastTimer;
-function toast(msg, err){
-  const t = $("#toast");
-  t.textContent = msg;
-  t.className = "toast on" + (err ? " err" : "");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.className = "toast", 2600);
-}
-
-/* 칩 선택 */
-function chipGroup(sel, onChange){
-  const box = $(sel);
-  function pick(el){
-    Array.from(box.children).forEach(c => c.setAttribute("aria-pressed", c === el ? "true" : "false"));
-    onChange && onChange(el.dataset.v);
-  }
-  box.addEventListener("click", e => { const c = e.target.closest(".chip"); if (c) pick(c); });
-  box.addEventListener("keydown", e => {
-    if (e.key === "Enter" || e.key === " ") { const c = e.target.closest(".chip"); if (c) { e.preventDefault(); pick(c); } }
-  });
-  return { get: () => (box.querySelector('[aria-pressed="true"]') || {}).dataset.v };
-}
-
-const kind = chipGroup("#f-kind", v => {
-  $("#f-driver-wrap").style.display = v === "용병" ? "block" : "none";
-  localStorage.setItem("bs_kind", v);
-});
-const type = chipGroup("#f-type", v => {
-  const b = $("#f-save");
-  $("#f-path-wrap").style.display = v === "받음" ? "block" : "none";
-  $("#f-qty-wrap").style.display = v === "사용" ? "none" : "block";
-  $("#f-alluse").style.display = v === "사용" ? "block" : "none";
-  $("#f-ask").style.display = "none";
-  b.textContent = v === "받음" ? "받음 기록하기" : v === "반납" ? "반납 기록하기" : "남은 빨시 전부 사용 처리";
-  b.className = "go" + (v === "반납" ? " ret" : "");
-  if (v === "사용") b.style.background = "var(--gold)"; else b.style.background = "";
-});
-const path = chipGroup("#f-path");
-const fundSrc = chipGroup("#fd-src");
-
-function setChip(sel, val){
-  Array.from($(sel).children).forEach(c => c.setAttribute("aria-pressed", c.dataset.v === val ? "true" : "false"));
-}
-
-/* 탭 */
-$$("nav button").forEach(b => b.addEventListener("click", () => {
-  $$("nav button").forEach(x => x.setAttribute("aria-current", x === b ? "true" : "false"));
-  $$("main section").forEach(s => s.classList.toggle("on", s.id === b.dataset.tab));
-  if (b.dataset.tab === "s-me") loadMe();
-  if (b.dataset.tab === "s-board") loadBoard();
-  if (b.dataset.tab === "s-manage") { loadRecords(); loadTrash(); loadStats(); }
-  window.scrollTo(0, 0);
-}));
-
-/* 부팅 */
-function fmt(n){ return Number(n || 0).toLocaleString("ko-KR"); }
-
-async function boot(){
-  const saved = localStorage.getItem("bs_name");
-  if (saved) $("#f-name").value = saved;
-  const k = localStorage.getItem("bs_kind");
-  if (k) { setChip("#f-kind", k); $("#f-driver-wrap").style.display = k === "용병" ? "block" : "none"; }
-  const dr = localStorage.getItem("bs_driver");
-  if (dr) $("#f-driver").value = dr;
+async function load() {
   try {
-    const b = await call("bootstrap");
-    state = b;
-    if (b.rev) lastRev = b.rev;
-    $("#charlist").innerHTML = b.chars.map(c => `<option value="${c}">`).join("");
-    $("#hdate").textContent = b.today + (b.day.총불출량 ? " · 오늘 불출 " + fmt(b.day.총불출량) + "개" : " · 총 불출량 미입력");
-    $("#hstate").innerHTML = b.day.마감
-      ? '<span class="tag closed">마감</span>'
-      : '<span class="tag open">기입 가능</span>';
-  } catch(e){
-    $("#hdate").textContent = e.message;
-  }
+    const r = await fetch(API).then(r => r.json());
+    if (r.ok) { D = r.data; renderAll(); }
+  } catch (e) { toast("불러오기 실패", 1); }
 }
 
-/* 기록 저장 */
-$("#f-save").addEventListener("click", async () => {
-  const name = $("#f-name").value.trim();
-  const t = type.get();
-  const qty = Number($("#f-qty").value);
-  if (!name) return toast("캐릭명을 적어주세요", true);
-  if (t !== "사용" && !(qty > 0)) return toast("수량을 적어주세요", true);
-  const btn = $("#f-save");
-  const label = btn.textContent;
-  btn.disabled = true; btn.textContent = "저장 중…";
+async function write(action, payload) {
+  let pw = localStorage.getItem("pw") || prompt("비밀번호");
+  if (!pw) return null;
   try {
-    const r = await call("submit", {
-      캐릭명: name, 구분: kind.get(), 실사용자: $("#f-driver").value.trim(),
-      유형: t, 수량: t === "사용" ? 0 : qty, 전량: t === "사용",
-      경로: path.get(), 비고: $("#f-memo").value.trim()
-    });
-    localStorage.setItem("bs_name", name);
-    if ($("#f-driver").value.trim()) localStorage.setItem("bs_driver", $("#f-driver").value.trim());
-    $("#f-qty").value = ""; $("#f-memo").value = "";
-    renderMe(r);
-    boot();
-
-    if (t === "반납" && r.보유 > 0) {
-      $("#f-ask-title").textContent = "남은 " + fmt(r.보유) + "개는 어떻게 됐나요?";
-      $("#f-ask").style.display = "block";
-      $("#f-ask").scrollIntoView({ block: "nearest" });
-      toast("반납 " + fmt(qty) + "개를 기록했습니다");
-    } else {
-      $("#f-ask").style.display = "none";
-      toast(t + " " + fmt(t === "사용" ? r.사용 : qty) + "개 저장 · 현재 보유 " + fmt(r.보유) + "개");
-    }
-  } catch(e){ toast(e.message, true); }
-  btn.disabled = false; btn.textContent = label;
-});
-
-$("#f-ask-used").addEventListener("click", async () => {
-  const name = $("#f-name").value.trim();
-  $("#f-ask").style.display = "none";
-  if (busy) return;
-  try {
-    const r = await call("submit", {
-      캐릭명: name, 구분: kind.get(), 실사용자: $("#f-driver").value.trim(),
-      유형: "사용", 수량: 0, 전량: true, 비고: "반납 후 잔량 소진"
-    });
-    renderMe(r);
-    toast("사용 처리했습니다 · 남은 수량 0개");
-  } catch(e){ toast(e.message, true); }
-});
-
-$("#f-ask-keep").addEventListener("click", () => {
-  $("#f-ask").style.display = "none";
-  toast("보유 상태로 남겨뒀습니다");
-});
-
-/* 판매 신청 */
-$("#sl-save").addEventListener("click", async () => {
-  const name = $("#f-name").value.trim();
-  const qty = Number($("#sl-qty").value);
-  if (!name) return toast("위에 캐릭명을 먼저 적어주세요", true);
-  if (!(qty > 0)) return toast("수량을 적어주세요", true);
-  try {
-    await call("sale", { 캐릭명: name, 수량: qty, 희망단가: moneyVal($("#sl-price")), 비고: $("#sl-memo").value.trim() });
-    $("#sl-qty").value = ""; $("#sl-price").value = ""; $("#sl-memo").value = "";
-    toast("판매 신청을 보냈습니다");
-  } catch(e){ toast(e.message, true); }
-});
-
-/* 내 현황 */
-async function loadMe(){
-  const name = ($("#f-name").value || localStorage.getItem("bs_name") || "").trim();
-  if (!name) { $("#me-title").textContent = "내 현황"; $("#me-cap").textContent = "먼저 기록 탭에서 캐릭명을 적어주세요"; return; }
-  try { renderMe(await call("me", { 캐릭명: name })); }
-  catch(e){ toast(e.message, true); }
+    const r = await fetch(API, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action, pw, ...payload }) }).then(r => r.json());
+    if (!r.ok) { if (r.error === "pw") { localStorage.removeItem("pw"); toast("비밀번호가 달라요", 1); } else toast(r.error || "실패", 1); return null; }
+    localStorage.setItem("pw", pw); D = r.data; renderAll(); return r;
+  } catch (e) { toast("저장 실패 (네트워크)", 1); return null; }
 }
 
-function renderMe(r){
-  $("#me-title").textContent = r.캐릭명;
-  $("#me-hold").textContent = fmt(r.보유);
-  $("#me-hold").style.color = r.보유 > 0 ? "var(--red)" : "var(--green)";
-  $("#me-cap").textContent = r.보유 > 0
-    ? (r.미정산시작일 ? r.미정산시작일 + "부터 들고 있습니다" : "반납하면 0이 됩니다")
-    : "정산 완료";
-  $("#me-today-in").textContent = fmt(r.오늘받음);
-  $("#me-today-out").textContent = fmt(r.오늘반납);
-  $("#me-in").textContent = fmt(r.받음);
-  $("#me-used").textContent = fmt(r.사용 || 0);
-  $("#me-back").textContent = fmt(r.반납);
-  $("#me-rate").textContent = r.소진율 + "%";
-
-  const warn = $("#me-warn");
-  const limit = (state.경고일수 || 2);
-  if (r.보유 > 0 && r.미반납일수 >= limit)
-    warn.innerHTML = '<div class="warn">' + r.미반납일수 + '일째 미반납입니다. 남은 ' + fmt(r.보유) + '개를 반납해주세요.</div>';
-  else warn.innerHTML = "";
-
-  $("#me-sold").textContent = fmt(r.판매수량 || 0);
-  $("#me-sold-won").textContent = fmt(r.판매금액 || 0);
-  const sl = $("#me-sales");
-  sl.innerHTML = (r.판매이력 || []).length ? r.판매이력.map(x =>
-    `<li class="li"><div class="main"><div class="nm">${x.일자}</div>
-      <div class="sub">${fmt(x.수량)}개 · 개당 ${fmt(x.개당단가)}${x.비고 ? " · " + x.비고 : ""}</div></div>
-      <div class="amt num" style="color:var(--gold)">${fmt(x.총액)}</div></li>`
-  ).join("") : '<li class="empty">판매 기록이 없습니다</li>';
-  const pend = (r.판매신청 || []).filter(x => x.상태 === "대기");
-  $("#me-pending").innerHTML = pend.length
-    ? '<p class="tiny">승인 대기 중: ' + pend.map(x => fmt(x.수량) + "개").join(", ") + '</p>' : "";
-
-  const ul = $("#me-list");
-  ul.innerHTML = r.최근.length ? r.최근.map(x => {
-    const sub = [x.일자 + " " + x.시각, x.경로, x.구분 === "용병" && x.실사용자 ? "실사용 " + x.실사용자 : "", x.비고]
-      .filter(Boolean).join(" · ");
-    return `<li class="li"><div class="main"><div class="nm">${x.유형}</div><div class="sub">${sub}</div></div>
-      <div class="amt num" style="color:${x.유형 === "받음" ? "var(--red)" : x.유형 === "반납" ? "var(--green)" : "var(--gold)"}">${x.유형 === "받음" ? "+" : "−"}${fmt(x.수량)}</div></li>`;
-  }).join("") : '<li class="empty">기록이 없습니다</li>';
+function boot() {
+  const has = !!API;
+  $("#setup").classList.toggle("hide", has);
+  $("#nav").classList.toggle("hide", !has);
+  if (!has) { document.querySelectorAll("main > section:not(#setup)").forEach(s => s.classList.add("hide")); return; }
+  go(tab); load();
 }
 
-$("#fx-save").addEventListener("click", async () => {
-  const name = ($("#f-name").value || localStorage.getItem("bs_name") || "").trim();
-  const text = $("#fx-text").value.trim();
-  if (!name) return toast("캐릭명을 먼저 적어주세요", true);
-  if (!text) return toast("내용을 적어주세요", true);
-  try {
-    await call("fix", { 캐릭명: name, 내용: text });
-    $("#fx-text").value = "";
-    toast("정정 요청을 보냈습니다");
-  } catch(e){ toast(e.message, true); }
-});
+function go(t) {
+  tab = t;
+  ["s-home", "s-write", "s-log", "s-admin"].forEach(id => $("#" + id).classList.toggle("hide", id !== t));
+  document.querySelectorAll("nav button").forEach(b => b.setAttribute("aria-current", b.dataset.t === t));
+  if (t === "s-admin") renderAdmin();
+}
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => { go(b.dataset.t); if (b.dataset.t === "s-home") load(); });
 
-/* 문파 현황 */
-async function loadBoard(){
-  try {
-    const b = await call("board");
-    if (b.rev) lastRev = b.rev;
-    boardCache = b;
-    const total = b.day.총불출량, filled = b.오늘기입;
-    const pct = total > 0 ? Math.min(100, Math.round(filled / total * 100)) : (filled > 0 ? 100 : 0);
-    $("#g-fill").style.width = pct + "%";
-    $("#g-gap").style.display = total > filled ? "block" : "none";
-    $("#g-left").textContent = "기입 " + fmt(filled) + "개";
-    $("#g-right").textContent = total > 0 ? "총 " + fmt(total) + "개" : "총량 미입력";
-    const w = $("#g-warn");
-    if (total > 0 && b.차이 > 0) { w.style.display = "block"; w.textContent = fmt(b.차이) + "개가 아직 기입되지 않았습니다."; }
-    else if (total > 0 && b.차이 < 0) { w.style.display = "block"; w.textContent = "기입이 총 불출량보다 " + fmt(-b.차이) + "개 많습니다. 확인이 필요합니다."; }
-    else w.style.display = "none";
+const today = () => { const d = new Date(), p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
+const live = () => D.recs.filter(r => !r.del);
 
-    $("#b-stock").textContent = fmt(b.재고);
-    $("#b-fund").textContent = fmt(b.자금잔고);
-    $("#b-in").textContent = fmt(b.자금수입 || 0);
-    $("#b-buy").textContent = fmt(b.빨시매입 || 0);
-    $("#b-bysrc").innerHTML = bySrcHtml(b.성별수입);
+function renderAll() { renderHome(); renderPick(); renderLog(); if (tab === "s-admin") renderAdmin(); }
 
-    const ul = $("#b-list");
-    ul.innerHTML = b.미반납.length ? b.미반납.map((p, i) => {
-      const sub = "받음 " + fmt(p.받음) + " · 사용 " + fmt(p.사용 || 0) + " · 반납 " + fmt(p.반납)
-        + (p.미반납일수 ? " · " + p.미반납일수 + "일째" : "");
-      return `<li class="li"><span class="rank">${i + 1}</span>
-        ${p.경고 ? '<span class="dot"></span>' : ''}
-        <div class="main"><div class="nm">${p.캐릭명}</div><div class="sub">${sub}</div></div>
-        <div class="amt plus num">${fmt(p.보유)}</div></li>`;
-    }).join("") : '<li class="empty">모두 정산됐습니다</li>';
-  } catch(e){ toast(e.message, true); }
+function renderHome() {
+  $("#stock").textContent = fmt(D.stock);
+  const c = D.checks[D.checks.length - 1];
+  $("#chk").innerHTML = c ? `최근 검산 ${esc(c.t.slice(5))} · 보고 ${fmt(c.reported)} / 계산 ${fmt(c.calc)} · <b class="${c.diff === 0 ? "ok" : "bad"}">${c.diff === 0 ? "일치" : "차이 " + (c.diff > 0 ? "+" : "") + fmt(c.diff)}</b>` : "검산 기록 없음";
+  const td = today(), L = live().filter(r => r.t.startsWith(td));
+  $("#todayOut").textContent = fmt(L.filter(r => r.type === "불출").reduce((a, r) => a + r.qty, 0));
+  $("#todayIn").textContent = fmt(L.filter(r => r.type === "회수").reduce((a, r) => a + r.qty, 0));
+  const m = {};
+  live().forEach(r => { if (!r.name) return; if (r.type === "불출") m[r.name] = (m[r.name] || 0) + r.qty; else if (r.type === "회수") m[r.name] = (m[r.name] || 0) - r.qty; });
+  const roleOf = {}; D.roster.forEach(p => roleOf[p.name] = p.role);
+  const out = Object.entries(m).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  $("#outCnt").textContent = out.length;
+  $("#outList").innerHTML = out.length ? out.map(([n, v]) => `<div class="it"><div class="grow">${esc(n)} ${roleOf[n] ? `<span class="tag">${esc(roleOf[n])}</span>` : ""}</div><div class="num">${fmt(v)}</div></div>`).join("") : `<div class="sub">미반납 없음</div>`;
 }
 
-function bySrcHtml(m){
-  const keys = Object.keys(m || {});
-  if (!keys.length) return "";
-  return "성별 누적 수입 · " + keys.sort((a,b) => m[b] - m[a])
-    .map(k => k.replace("의성", "") + " " + fmt(m[k])).join(" / ");
+/* ---------- 입력 ---------- */
+function renderTypes() {
+  $("#typeChips").innerHTML = ["불출", "회수", "입고"].map(t => `<button class="chip ${t === type ? "on" : ""}" onclick="setType('${t}')">${t}</button>`).join("");
+  $("#pickArea").classList.toggle("hide", type === "입고");
+  $("#qLabel").textContent = type === "입고" ? "입고 수량" : "수량 (전체 적용)";
+}
+function setType(t) { type = t; renderTypes(); }
+
+function renderPick() {
+  renderTypes();
+  const roles = [...new Set(D.roster.map(p => p.role).filter(Boolean))];
+  $("#roleBtns").innerHTML = roles.map(r => `<button class="sm ghost" onclick="pickRole('${esc(r).replace(/'/g, "\\'")}')">${esc(r)} 전원</button>`).join("");
+  const f = $("#filter").value.trim();
+  const names = D.roster.filter(p => !f || p.name.includes(f) || (p.role || "").includes(f));
+  let h = names.map(p => `<button class="chip ${sel.some(s => s.name === p.name) ? "on" : ""}" data-n="${esc(p.name)}">${esc(p.name)}${p.role ? `<small>${esc(p.role)}</small>` : ""}</button>`).join("");
+  if (f && !D.roster.some(p => p.name === f)) h += `<button class="chip" data-n="${esc(f)}" data-new="1">+ "${esc(f)}" 새로 추가</button>`;
+  $("#nameChips").innerHTML = h || `<span class="sub">명단이 비었어요. 이름을 입력해서 추가하세요.</span>`;
+  $("#nameChips").querySelectorAll("button").forEach(b => b.onclick = () => togglePick(b.dataset.n, b.dataset.new));
+  renderSel();
+}
+function qNow() { return Number($("#q0").value) || 0; }
+function togglePick(n, isNew) {
+  const i = sel.findIndex(s => s.name === n);
+  if (i >= 0) sel.splice(i, 1); else sel.push({ name: n, qty: qNow() });
+  if (isNew) $("#filter").value = "";
+  renderPick();
+}
+function pickRole(role) {
+  D.roster.filter(p => p.role === role).forEach(p => { if (!sel.some(s => s.name === p.name)) sel.push({ name: p.name, qty: qNow() }); });
+  renderPick();
+}
+function renderSel() {
+  const roleOf = {}; D.roster.forEach(p => roleOf[p.name] = p.role);
+  $("#selList").innerHTML = sel.map((s, i) => `<div class="it"><div class="grow">${esc(s.name)} ${roleOf[s.name] ? `<span class="tag">${esc(roleOf[s.name])}</span>` : ""}</div><input type="number" inputmode="numeric" value="${s.qty || ""}" style="width:90px" oninput="sel[${i}].qty=Number(this.value)||0"><button class="sm ghost" onclick="sel.splice(${i},1);renderPick()">✕</button></div>`).join("");
+}
+function applyQ() { const q = qNow(); sel.forEach(s => s.qty = q); renderSel(); }
+
+async function submitRec() {
+  const memo = $("#memo").value.trim();
+  let rows;
+  if (type === "입고") rows = [{ type, name: "", qty: qNow(), memo }];
+  else rows = sel.filter(s => s.qty > 0).map(s => ({ type, name: s.name, qty: s.qty, memo }));
+  if (!rows.length) return toast("대상과 수량을 확인해 주세요", 1);
+  const sum = rows.reduce((a, r) => a + r.qty, 0);
+  if (!confirm(`${type} ${rows.length}건 · 합계 ${fmt(sum)}개\n저장할까요?`)) return;
+  const r = await write("add", { rows });
+  if (r) { sel = []; $("#q0").value = ""; $("#memo").value = ""; $("#filter").value = ""; renderPick(); toast("저장했어요"); }
 }
 
-/* 운영진 */
-$("#ad-in").addEventListener("click", async () => {
-  const pw = $("#ad-pw").value.trim();
-  const btn = $("#ad-in");
-  if (!pw) return toast("비밀번호를 입력하세요", true);
-  btn.disabled = true; btn.textContent = "확인 중…";
-  try {
-    await call("admin", { pw: pw, sub: "auth" });   // 확인만 — 가볍고 빠름
-    ADMIN_PW = pw;
-    $("#ad-login").classList.add("off");
-    $("#ad-body").classList.add("on");
-    $("#nav-manage").hidden = false;
-    renderAdmin(await adminCall("dash"));
-  } catch(e){ toast(e.message, true); }
-  btn.disabled = false; btn.textContent = "들어가기";
-});
+/* ---------- 기록 ---------- */
+function renderLog() {
+  const q = $("#logQ").value.trim();
+  const L = D.recs.slice().reverse().filter(r => !q || r.name.includes(q) || r.memo.includes(q)).slice(0, 150);
+  $("#logList").innerHTML = L.map(r => `<div class="it ${r.del ? "del" : ""}"><div class="grow"><div><b class="t-${r.type}">${r.type}</b> ${esc(r.name || "")} ${r.role ? `<span class="tag">${esc(r.role)}</span>` : ""}</div><div class="sub">${esc(r.t)}${r.memo ? " · " + esc(r.memo) : ""}</div></div><div class="num">${fmt(r.qty)}</div><button class="sm ghost" onclick="delRec('${r.id}',${r.del})">${r.del ? "복구" : "삭제"}</button></div>`).join("") || `<div class="sub">기록 없음</div>`;
+}
+async function delRec(id, undo) { if (!undo && !confirm("이 기록을 삭제할까요? (복구 가능)")) return; await write("del", { id, undo }); }
 
-$("#ad-pw").addEventListener("keydown", e => { if (e.key === "Enter") $("#ad-in").click(); });
-
-function adminCall(sub, extra){
-  return call("admin", Object.assign({ pw: ADMIN_PW, sub: sub }, extra || {}));
+/* ---------- 관리 ---------- */
+function renderAdmin() {
+  if (!R.length || R._src !== D.roster) { R = D.roster.map(p => ({ ...p })); R._src = D.roster; }
+  drawRoster();
+  $("#chkList").innerHTML = D.checks.slice(-5).reverse().map(c => `<div class="it"><div class="grow"><div>${esc(c.t.slice(5))} · 보고 ${fmt(c.reported)} / 계산 ${fmt(c.calc)}</div><div class="sub">${esc(c.memo)}</div></div><b class="${c.diff === 0 ? "ok" : "bad"}">${c.diff === 0 ? "일치" : (c.diff > 0 ? "+" : "") + fmt(c.diff)}</b></div>`).join("");
+}
+function drawRoster() {
+  $("#rosterEd").innerHTML = R.map((p, i) => `<div class="row" style="margin-bottom:6px"><input value="${esc(p.name)}" placeholder="캐릭명" oninput="R[${i}].name=this.value"><input value="${esc(p.role)}" placeholder="직책" oninput="R[${i}].role=this.value"><button class="sm ghost" onclick="R.splice(${i},1);drawRoster()">✕</button></div>`).join("") || `<div class="sub">명단이 비었어요</div>`;
+}
+function addRow() { R.push({ name: "", role: "", memo: "" }); drawRoster(); }
+async function saveRoster() {
+  const list = R.map(p => ({ name: p.name.trim(), role: p.role.trim(), memo: p.memo || "" })).filter(p => p.name);
+  if (new Set(list.map(p => p.name)).size !== list.length) return toast("이름이 중복돼요", 1);
+  const r = await write("roster", { list }); if (r) { R = []; renderAdmin(); toast("명단 저장"); }
+}
+async function submitCheck() {
+  const v = $("#chkQ").value; if (v === "") return toast("보고 수량을 적어 주세요", 1);
+  const r = await write("check", { reported: Number(v), memo: $("#chkM").value.trim() });
+  if (r) { $("#chkQ").value = ""; $("#chkM").value = ""; toast("검산 기록"); }
 }
 
-function renderAdmin(d){
-  if (d.rev) lastRev = d.rev;
-  $("#ad-total").value = d.day.총불출량 || "";
-  $("#ad-diff").textContent = "기입 " + fmt(d.오늘기입) + " / 총 " + fmt(d.day.총불출량)
-    + (d.차이 ? " (차이 " + fmt(d.차이) + ")" : "");
-  $("#ad-close").textContent = d.day.마감 ? "마감 해제" : "마감하기";
-  $("#hstate").innerHTML = d.day.마감 ? '<span class="tag closed">마감</span>' : '<span class="tag open">기입 가능</span>';
-
-  $("#ad-sales").innerHTML = d.판매대기.length ? d.판매대기.map(s =>
-    `<li class="li"><div class="main"><div class="nm">${s.캐릭명} · ${fmt(s.수량)}개</div>
-      <div class="sub">${s.일시}${s.희망단가 ? " · 개당 " + fmt(s.희망단가) : ""}${s.비고 ? " · " + s.비고 : ""}</div></div>
-      <button class="sm ok" data-sale="${s.신청ID}" data-act="승인">승인</button>
-      <button class="sm no" data-sale="${s.신청ID}" data-act="거절">거절</button></li>`
-  ).join("") : '<li class="empty">대기 중인 신청이 없습니다</li>';
-
-  $("#ad-fixes").innerHTML = d.정정대기.length ? d.정정대기.map(f =>
-    `<li class="li"><div class="main"><div class="nm">${f.캐릭명}</div><div class="sub">${f.일시} · ${f.내용}</div></div>
-      <button class="sm ok" data-fix="${f.요청ID}" data-act="처리">처리</button>
-      <button class="sm no" data-fix="${f.요청ID}" data-act="반려">반려</button></li>`
-  ).join("") : '<li class="empty">대기 중인 요청이 없습니다</li>';
-
-  $("#ad-today").innerHTML = d.오늘기록.length ? d.오늘기록.map(r =>
-    `<li class="li"><div class="main"><div class="nm">${r.캐릭명} · ${r.유형}</div>
-      <div class="sub">${[r.시각, r.구분, r.실사용자 ? "실사용 " + r.실사용자 : "", r.경로, r.비고].filter(Boolean).join(" · ")}</div></div>
-      <div class="amt num" style="color:${r.유형 === "받음" ? "var(--red)" : r.유형 === "반납" ? "var(--green)" : "var(--gold)"}">${r.유형 === "받음" ? "+" : "−"}${fmt(r.수량)}</div>
-      <button class="sm no" data-cancel="${r.기록ID}">취소</button></li>`
-  ).join("") : '<li class="empty">오늘 기록이 없습니다</li>';
-
-  $("#fd-bal").textContent = fmt(d.자금잔고);
-  $("#fd-in").textContent = fmt(d.자금수입 || 0);
-  $("#fd-buy").textContent = fmt(d.빨시매입 || 0);
-  $("#fd-out").textContent = fmt(d.자금지출 || 0);
-  $("#fd-bysrc").innerHTML = bySrcHtml(d.성별수입);
-  if (!$("#fd-date").value) $("#fd-date").value = d.today;
-  if (document.activeElement !== $("#cf-open")) setMoney($("#cf-open"), d.자금잔고 || 0);
-  if (document.activeElement !== $("#cf-warn")) $("#cf-warn").value = d.경고일수 || 2;
-
-  $("#fd-list").innerHTML = (d.자금기록 || []).length ? d.자금기록.map(f =>
-    `<li class="li"><div class="main"><div class="nm">${f.출처 || "기타"}${f.유형 === "지출" ? " · 지출" : ""}</div>
-      <div class="sub">${f.일자}${f.메모 ? " · " + f.메모 : ""}</div></div>
-      <div class="amt ${f.유형 === "지출" ? "plus" : "minus"} num">${f.유형 === "지출" ? "−" : "+"}${fmt(f.금액)}</div>
-      <button class="sm no" data-fund="${f.기록ID}">삭제</button></li>`
-  ).join("") : '<li class="empty">자금 기록이 없습니다</li>';
-
-  $("#ad-all").innerHTML = d.전체.length ? d.전체.map(p =>
-    `<li class="li"><div class="main"><div class="nm">${p.캐릭명}</div>
-      <div class="sub">받음 ${fmt(p.받음)} · 사용 ${fmt(p.사용 || 0)} · 반납 ${fmt(p.반납)} · 소진율 ${p.소진율}%${p.미반납일수 ? " · " + p.미반납일수 + "일째" : ""}</div></div>
-      <div class="amt ${p.보유 > 0 ? "plus" : "minus"} num">${fmt(p.보유)}</div></li>`
-  ).join("") : '<li class="empty">기록이 없습니다</li>';
-}
-
-$("#ad-total-save").addEventListener("click", async () => {
-  try { renderAdmin(await adminCall("setTotal", { 총불출량: Number($("#ad-total").value) || 0 })); toast("총 불출량을 저장했습니다"); }
-  catch(e){ toast(e.message, true); }
-});
-
-$("#ad-close").addEventListener("click", async () => {
-  const closing = $("#ad-close").textContent === "마감하기";
-  try { renderAdmin(await adminCall("close", { 해제: !closing })); toast(closing ? "마감했습니다" : "마감을 해제했습니다"); }
-  catch(e){ toast(e.message, true); }
-});
-
-$("#ad-in-save").addEventListener("click", async () => {
-  const seller = $("#ad-seller").value.trim(), qty = Number($("#ad-qty").value);
-  if (!seller) return toast("판매자 캐릭명을 적어주세요", true);
-  if (!(qty > 0)) return toast("수량을 적어주세요", true);
-  try {
-    renderAdmin(await adminCall("stockIn", {
-      판매자: seller, 수량: qty, 개당단가: moneyVal($("#ad-unit")), 비고: $("#ad-inmemo").value.trim()
-    }));
-    $("#ad-seller").value = ""; $("#ad-qty").value = ""; $("#ad-inmemo").value = "";
-    toast("입고를 등록했습니다");
-  } catch(e){ toast(e.message, true); }
-});
-
-async function fundSubmit(type){
-  const amt = moneyVal($("#fd-amt"));
-  if (!(amt > 0)) return toast("금액을 입력하세요", true);
-  try {
-    renderAdmin(await adminCall("fundAdd", {
-      유형: type, 출처: fundSrc.get(), 금액: amt,
-      일자: $("#fd-date").value || undefined, 메모: $("#fd-memo").value.trim()
-    }));
-    $("#fd-amt").value = ""; $("#fd-memo").value = "";
-    toast(type + " " + fmt(amt) + "원을 기록했습니다");
-  } catch(e){ toast(e.message, true); }
-}
-$("#fd-add").addEventListener("click", () => fundSubmit("수입"));
-$("#fd-sub").addEventListener("click", () => fundSubmit("지출"));
-
-$("#cf-save").addEventListener("click", async () => {
-  try {
-    renderAdmin(await adminCall("setCfg", {
-      현재잔고: moneyVal($("#cf-open")),
-      미반납경고일수: Number($("#cf-warn").value) || 2
-    }));
-    toast("설정을 저장했습니다");
-  } catch(e){ toast(e.message, true); }
-});
-
-$("#ad-pw-save").addEventListener("click", async () => {
-  const a = $("#ad-newpw").value.trim(), b = $("#ad-newpw2").value.trim();
-  if (a.length < 4) return toast("4자 이상으로 정해주세요", true);
-  if (a !== b) return toast("두 칸이 서로 다릅니다", true);
-  try {
-    await adminCall("setPw", { 새비밀번호: a });
-    ADMIN_PW = a;
-    $("#ad-newpw").value = ""; $("#ad-newpw2").value = "";
-    toast("비밀번호를 바꿨습니다");
-  } catch(e){ toast(e.message, true); }
-});
-
-$("#ad-body").addEventListener("click", async e => {
-  const b = e.target.closest("button");
-  if (!b || b.id) return;
-  try {
-    if (b.dataset.sale) renderAdmin(await adminCall("saleAct", { 신청ID: b.dataset.sale, 결정: b.dataset.act }));
-    else if (b.dataset.fix) renderAdmin(await adminCall("fixAct", { 요청ID: b.dataset.fix, 결정: b.dataset.act }));
-    else if (b.dataset.fund) {
-      if (!confirm("이 자금 기록을 지울까요?")) return;
-      renderAdmin(await adminCall("fundDel", { 기록ID: b.dataset.fund }));
-    }
-    else if (b.dataset.cancel) {
-      if (!confirm("이 기록을 취소 처리할까요? 시트에는 취소로 남습니다.")) return;
-      renderAdmin(await adminCall("cancel", { 기록ID: b.dataset.cancel }));
-    } else return;
-    toast("처리했습니다");
-  } catch(err){ toast(err.message, true); }
-});
-
-/* 목록의 설명이 길면 탭해서 펼치기 */
-document.addEventListener("click", e => {
-  if (e.target.closest("button") || e.target.closest("input")) return;
-  const main = e.target.closest(".li .main");
-  if (!main) return;
-  main.parentElement.classList.toggle("open");
-});
-
-/* ===== 클립보드 ===== */
-async function copyText(text, okMsg){
-  try {
-    if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
-    else {
-      const ta = document.createElement("textarea");
-      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
-      document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
-    }
-    toast(okMsg || "복사했습니다");
-  } catch(e){ toast("복사에 실패했습니다. 길게 눌러 직접 복사해주세요", true); }
-}
-
-let boardCache = null;
-
-$("#b-copy").addEventListener("click", () => {
-  if (!boardCache || !boardCache.미반납.length) return toast("복사할 명단이 없습니다", true);
-  const lines = boardCache.미반납.map(p =>
-    `${p.캐릭명} ${fmt(p.보유)}개` + (p.미반납일수 ? ` (${p.미반납일수}일째)` : "")
-  );
-  const total = boardCache.미반납.reduce((a, p) => a + p.보유, 0);
-  copyText(
-    `[빨시 미반납 명단] ${boardCache.today}\n` + lines.join("\n") +
-    `\n\n합계 ${fmt(total)}개 · ${boardCache.미반납.length}명\n남은 빨시는 반납해주세요.`,
-    "명단을 복사했습니다"
-  );
-});
-
-/* ===== 기간별 통계 ===== */
-let statCache = null;
-
-function ymd(dt){
-  return dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0") + "-" + String(dt.getDate()).padStart(2, "0");
-}
-
-const stPreset = chipGroup("#st-preset", v => {
-  const now = new Date();
-  if (v === "all") { $("#st-from").value = ""; $("#st-to").value = ""; }
-  else if (v === "month") {
-    $("#st-from").value = ymd(new Date(now.getFullYear(), now.getMonth(), 1));
-    $("#st-to").value = ymd(now);
-  } else {
-    const days = Number(v);
-    const from = new Date(now); from.setDate(now.getDate() - days + 1);
-    $("#st-from").value = ymd(from);
-    $("#st-to").value = ymd(now);
-  }
-  if (ADMIN_PW) loadStats();
-});
-
-async function loadStats(){
-  if (!ADMIN_PW) return;
-  try {
-    statCache = await adminCall("stats", { 시작일: $("#st-from").value || "", 종료일: $("#st-to").value || "" });
-    renderStats(statCache);
-  } catch(e){ toast(e.message, true); }
-}
-
-function renderStats(d){
-  $("#st-out").textContent = fmt(d.총받음);
-  $("#st-use").textContent = fmt(d.총사용);
-  $("#st-back").textContent = fmt(d.총반납);
-  $("#st-rate").textContent = d.전체소진율 + "%";
-  $("#st-avg").textContent = fmt(d.하루평균);
-  $("#st-ppl").textContent = fmt(d.인원수);
-  $("#st-buyq").textContent = fmt(d.매입수량);
-  $("#st-buyw").textContent = fmt(d.매입금액);
-
-  const parts = [];
-  if (d.자금수입) parts.push("자금 수입 " + fmt(d.자금수입));
-  if (d.자금지출) parts.push("기타 지출 " + fmt(d.자금지출));
-  const bysrc = bySrcHtml(d.성별수입);
-  $("#st-fund").innerHTML = [parts.join(" · "), bysrc].filter(Boolean).join("<br>");
-
-  $("#st-list").innerHTML = d.인원.length ? d.인원.map(p =>
-    `<li class="li"><div class="main"><div class="nm">${p.캐릭명}</div>
-      <div class="sub">사용 ${fmt(p.사용)} · 반납 ${fmt(p.반납)}${p.미정산 > 0 ? " · 미정산 " + fmt(p.미정산) : ""} · 소진율 ${p.소진율}%</div></div>
-      <div class="amt plus num">${fmt(p.받음)}</div></li>`
-  ).join("") : '<li class="empty">이 기간에 기록이 없습니다</li>';
-}
-
-$("#st-go").addEventListener("click", loadStats);
-
-(function initStatRange(){
-  const now = new Date();
-  const from = new Date(now); from.setDate(now.getDate() - 29);
-  $("#st-from").value = ymd(from);
-  $("#st-to").value = ymd(now);
-})();
-
-$("#st-copy").addEventListener("click", () => {
-  if (!statCache) return toast("먼저 통계를 불러오세요", true);
-  const d = statCache;
-  const range = (d.시작일 || "처음") + " ~ " + (d.종료일 || "오늘");
-  const head = `[빨시 통계] ${range}\n`
-    + `불출 ${fmt(d.총받음)} · 사용 ${fmt(d.총사용)} · 반납 ${fmt(d.총반납)} · 소진율 ${d.전체소진율}%\n`
-    + `하루 평균 ${fmt(d.하루평균)}개 · 참여 ${fmt(d.인원수)}명\n`;
-  const body = d.인원.slice(0, 30).map(p =>
-    `${p.캐릭명} 받음 ${fmt(p.받음)} / 사용 ${fmt(p.사용)} / 소진율 ${p.소진율}%`
-  ).join("\n");
-  copyText(head + "\n" + body, "통계를 복사했습니다");
-});
-
-/* ===== 기록 관리 ===== */
-const mgKind = chipGroup("#mg-kind", () => { if (ADMIN_PW) loadRecords(); });
-
-function mgFilters(){
-  return {
-    종류: mgKind.get(),
-    검색: $("#mg-q").value.trim(),
-    시작일: $("#mg-from").value || "",
-    종료일: $("#mg-to").value || ""
-  };
-}
-
-async function loadRecords(){
-  if (!ADMIN_PW) { $("#mg-list").innerHTML = '<li class="empty">운영진 탭에서 먼저 로그인하세요</li>'; return; }
-  try { renderRecords(await adminCall("records", mgFilters())); }
-  catch(e){ toast(e.message, true); }
-}
-
-function renderRecords(d){
-  $("#mg-count").textContent = d.총건수
-    ? `${fmt(d.총건수)}건 중 최근 ${fmt(d.목록.length)}건을 보고 있습니다`
-    : "조건에 맞는 기록이 없습니다";
-  $("#mg-list").innerHTML = d.목록.length ? d.목록.map(r => {
-    const col = r.유형 === "받음" ? "var(--red)" : r.유형 === "반납" ? "var(--green)"
-      : r.유형 === "사용" ? "var(--gold)" : r.유형 === "지출" ? "var(--red)"
-      : r.단위 === "원" ? "var(--gold)" : "var(--text)";
-    const val = r.단위 ? fmt(r.값) + r.단위 : "";
-    return `<li class="li"><div class="main">
-      <div class="nm" style="${r.취소 ? "text-decoration:line-through;color:var(--muted)" : ""}">${r.제목}</div>
-      <div class="sub">${r.일자} · ${r.상세}</div></div>
-      <div class="amt num" style="color:${col};font-size:15px">${val}</div>
-      <button class="sm no" data-del="${r.기록ID}" data-kind="${r.종류}">삭제</button></li>`;
-  }).join("") : '<li class="empty">조건에 맞는 기록이 없습니다</li>';
-}
-
-async function loadTrash(){
-  if (!ADMIN_PW) return;
-  try {
-    const t = await adminCall("trash");
-    $("#tr-list").innerHTML = t.length ? t.map(r =>
-      `<li class="li"><div class="main"><div class="nm">${r.원본시트}</div>
-        <div class="sub">${r.삭제시각} · ${r.요약}</div></div>
-        <button class="sm ok" data-restore="${r.삭제ID}">복구</button></li>`
-    ).join("") : '<li class="empty">휴지통이 비어 있습니다</li>';
-  } catch(e){ /* 조용히 */ }
-}
-
-$("#tr-list").addEventListener("click", async e => {
-  const b = e.target.closest("button[data-restore]");
-  if (!b) return;
-  try {
-    await adminCall("restore", { 삭제ID: b.dataset.restore });
-    toast("기록을 되살렸습니다");
-    loadTrash(); loadRecords();
-  } catch(err){ toast(err.message, true); }
-});
-
-$("#tr-purge").addEventListener("click", async () => {
-  const pw2 = $("#tr-pw").value.trim();
-  if (!pw2) return toast("비밀번호를 입력하세요", true);
-  if (!confirm("휴지통을 완전히 비울까요? 되살릴 수 없습니다.")) return;
-  try {
-    await adminCall("purge", { 확인: pw2 });
-    $("#tr-pw").value = "";
-    toast("휴지통을 비웠습니다");
-    loadTrash();
-  } catch(e){ toast(e.message, true); }
-});
-
-$("#mg-search").addEventListener("click", loadRecords);
-$("#mg-q").addEventListener("keydown", e => { if (e.key === "Enter") loadRecords(); });
-
-$("#mg-list").addEventListener("click", async e => {
-  const b = e.target.closest("button[data-del]");
-  if (!b) return;
-  if (!confirm("이 기록을 완전히 지울까요? 되돌릴 수 없습니다.")) return;
-  try {
-    renderRecords(await adminCall("delRec", Object.assign(mgFilters(), { 종류: b.dataset.kind, 기록ID: b.dataset.del })));
-    toast("휴지통으로 옮겼습니다");
-    loadTrash();
-  } catch(err){ toast(err.message, true); }
-});
-
-$("#rs-go").addEventListener("click", async () => {
-  const pw2 = $("#rs-pw").value.trim();
-  if (!pw2) return toast("비밀번호를 입력하세요", true);
-  if (!confirm("정말 전체 초기화할까요? 모든 기록이 사라지고 되돌릴 수 없습니다.")) return;
-  if (!confirm("마지막 확인입니다. 진행할까요?")) return;
-  try {
-    const r = await adminCall("resetAll", { 확인: pw2, 캐릭명단포함: $("#rs-chars").checked });
-    $("#rs-pw").value = "";
-    lastRev = 0;
-    toast("초기화 완료 · 백업 탭 " + (r.백업 || []).length + "개를 시트에 만들었습니다");
-    loadRecords(); loadTrash();
-    renderAdmin(await adminCall("dash"));
-  } catch(e){ toast(e.message, true); }
-});
-
-/* ===== 자동 갱신 ===== */
-let lastRev = 0, poll = null, busy = false;
-
-function currentTab(){
-  const b = document.querySelector('nav button[aria-current="true"]');
-  return b ? b.dataset.tab : "s-write";
-}
-
-async function refreshCurrent(){
-  const t = currentTab();
-  if (t === "s-me") await loadMe();
-  else if (t === "s-board") await loadBoard();
-  else if (t === "s-admin" && ADMIN_PW) renderAdmin(await adminCall("dash"));
-  else if (t === "s-manage" && ADMIN_PW) { await loadRecords(); await loadTrash(); }
-  else await boot();
-}
-
-async function checkChanges(){
-  if (busy || document.hidden) return;
-  const t = currentTab();
-  if (t === "s-write") return;              // 입력 중에는 건드리지 않음
-  if ((t === "s-admin" || t === "s-manage") && !ADMIN_PW) return; // 로그인 전에는 확인 안 함
-  busy = true;
-  try {
-    const r = await call("rev");
-    if (r.rev && r.rev !== lastRev) { lastRev = r.rev; await refreshCurrent(); }
-  } catch(e){ /* 조용히 넘어감 */ }
-  busy = false;
-}
-
-function startPoll(){ if (!poll) poll = setInterval(checkChanges, 15000); }
-function stopPoll(){ clearInterval(poll); poll = null; }
-
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden) stopPoll();
-  else { startPoll(); checkChanges(); }
-});
-
-$("#refresh").addEventListener("click", async () => {
-  const b = $("#refresh");
-  if (busy) return;
-  busy = true; b.classList.add("spin");
-  try { await refreshCurrent(); toast("최신 상태로 새로고침했습니다"); }
-  catch(e){ toast(e.message, true); }
-  busy = false; b.classList.remove("spin");
-});
-
-boot();
-startPoll();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+boot();
 </script>
 </body>
 </html>
