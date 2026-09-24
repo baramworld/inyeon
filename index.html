@@ -133,7 +133,8 @@ nav button[aria-current=true]{color:var(--pri)}
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt = n => Number(n || 0).toLocaleString("ko-KR");
-let API = localStorage.getItem("api") || "";
+const DEFAULT_API = "https://script.google.com/macros/s/AKfycbywfRyr2Aqul63z1v9sjbw9Y6K-kC5sTht5h78yN59buC9A0WCZkc6Or3v5WGLPKRNw/exec";
+let API = localStorage.getItem("api") || DEFAULT_API;
 let D = { roster: [], recs: [], checks: [], stock: 0 };
 let type = "불출", sel = [], R = [], tab = "s-home";
 
