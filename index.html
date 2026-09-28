@@ -45,6 +45,11 @@ nav button[aria-current=true]{color:var(--pri)}
 #toast.show{opacity:1}#toast.err{background:#b3261e}
 .hide{display:none!important}
 .ok{color:var(--ok)}.bad{color:var(--pri)}
+nav button{font-size:13px}
+.seg{display:flex;gap:6px;margin-bottom:10px}.seg button{flex:1}
+.mid{font-size:26px;font-weight:800;letter-spacing:-.5px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g2 .card{margin:0}
 </style>
 </head>
 <body>
@@ -61,6 +66,11 @@ nav button[aria-current=true]{color:var(--pri)}
 
   <!-- 현황 -->
   <section id="s-home" class="hide">
+    <div class="g2" style="margin-bottom:10px">
+      <div class="card"><div class="sub">문파자금</div><div class="mid" id="balG">-</div><div class="sub" id="balGs"></div></div>
+      <div class="card"><div class="sub">현금</div><div class="mid" id="balC">-</div><div class="sub" id="balCs"></div></div>
+    </div>
+    <div class="card"><div class="sub" style="margin-bottom:6px">성 수입 누적 (전)</div><div class="g2" id="castleBox"></div></div>
     <div class="card">
       <div class="sub">현재 재고 (빨간시약)</div>
       <div class="big" id="stock">-</div>
@@ -93,9 +103,45 @@ nav button[aria-current=true]{color:var(--pri)}
     </div>
   </section>
 
+  <!-- 자금 입력 -->
+  <section id="s-fund" class="hide">
+    <div class="card">
+      <div class="row wrap" id="fmodeChips"></div>
+
+      <div id="fMain">
+        <div class="sub" style="margin-top:12px">계정</div>
+        <div class="row wrap" id="acctChips" style="margin-top:6px"></div>
+        <div class="sub" style="margin-top:12px">분류</div>
+        <div class="row wrap" id="catChips" style="margin-top:6px"></div>
+        <div id="castleRow" class="hide"><div class="sub" style="margin-top:12px">성</div><div class="row wrap" id="castleChips" style="margin-top:6px"></div></div>
+        <input id="fTarget" placeholder="대상 (문파원 캐릭명, 선택)" style="margin-top:12px">
+        <input id="fAmt" inputmode="decimal" placeholder="금액 (예: 141.4만 / 2083400)" style="margin-top:10px" oninput="fPrev()">
+        <div class="sub" id="fAmtP" style="margin-top:4px"></div>
+      </div>
+
+      <div id="fBar" class="hide">
+        <div class="sub" style="margin-top:12px">현금으로 사서 문파자금으로 바꾸는 환전이에요</div>
+        <input id="bCash" inputmode="decimal" placeholder="현금 지출 (원)" style="margin-top:10px" oninput="fPrev()">
+        <input id="bGold" inputmode="decimal" placeholder="문파자금 수입 (전, 예: 300만)" style="margin-top:10px" oninput="fPrev()">
+        <div class="sub" id="bP" style="margin-top:4px"></div>
+      </div>
+
+      <div id="fBuy" class="hide">
+        <div class="sub" style="margin-top:12px">빨시 입고와 문파자금 지출이 같이 기록돼요</div>
+        <input id="yQty" type="number" inputmode="numeric" placeholder="빨시 개수" style="margin-top:10px" oninput="fPrev()">
+        <input id="yUnit" inputmode="decimal" placeholder="개당 가격 (전, 예: 1.4만)" style="margin-top:10px" oninput="fPrev()">
+        <div class="sub" id="yP" style="margin-top:4px"></div>
+      </div>
+
+      <input id="fMemo" placeholder="비고 (선택)" style="margin-top:10px">
+      <button class="pri big-btn" style="margin-top:12px" onclick="submitFund()">저장</button>
+    </div>
+  </section>
+
   <!-- 기록 -->
   <section id="s-log" class="hide">
-    <input id="logQ" placeholder="이름 검색" oninput="renderLog()">
+    <div class="seg"><button id="lgR" class="on" onclick="setLog('r')">빨시</button><button id="lgF" onclick="setLog('f')">자금</button></div>
+    <input id="logQ" placeholder="검색" oninput="renderLog()">
     <div class="card list" id="logList" style="margin-top:10px"></div>
   </section>
 
@@ -107,6 +153,14 @@ nav button[aria-current=true]{color:var(--pri)}
       <div class="row"><input id="chkQ" type="number" inputmode="numeric" placeholder="보고 수량"><input id="chkM" placeholder="메모"></div>
       <button class="big-btn" style="margin-top:10px" onclick="submitCheck()">검산 기록</button>
       <div class="list" id="chkList" style="margin-top:8px"></div>
+    </div>
+    <h2>자금 검산</h2>
+    <div class="card">
+      <p class="sub" style="margin-top:0">카톡의 "OO전 남음" 보고를 적어 계산 잔액과 비교해요.</p>
+      <div class="row wrap" id="fcAcct"></div>
+      <div class="row" style="margin-top:8px"><input id="fcQ" inputmode="decimal" placeholder="보고 금액 (예: 208.34만)"><input id="fcM" placeholder="메모"></div>
+      <button class="big-btn" style="margin-top:10px" onclick="submitFCheck()">자금 검산 기록</button>
+      <div class="list" id="fcList" style="margin-top:8px"></div>
     </div>
     <h2>명단 (직책은 언제든 수정)</h2>
     <div class="card">
@@ -123,7 +177,8 @@ nav button[aria-current=true]{color:var(--pri)}
 
 <nav id="nav" class="hide">
   <button data-t="s-home" aria-current="true">현황</button>
-  <button data-t="s-write">입력</button>
+  <button data-t="s-write">빨시</button>
+  <button data-t="s-fund">자금</button>
   <button data-t="s-log">기록</button>
   <button data-t="s-admin">관리</button>
 </nav>
@@ -135,7 +190,7 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 const fmt = n => Number(n || 0).toLocaleString("ko-KR");
 const DEFAULT_API = "https://script.google.com/macros/s/AKfycbywfRyr2Aqul63z1v9sjbw9Y6K-kC5sTht5h78yN59buC9A0WCZkc6Or3v5WGLPKRNw/exec";
 let API = localStorage.getItem("api") || DEFAULT_API;
-let D = { roster: [], recs: [], checks: [], stock: 0 };
+let D = { roster: [], recs: [], checks: [], stock: 0, funds: [], fchecks: [], bal: {"문파자금":0,"현금":0}, castles: {} };
 let type = "불출", sel = [], R = [], tab = "s-home";
 
 function toast(m, err) { const t = $("#toast"); t.textContent = m; t.className = "show" + (err ? " err" : ""); clearTimeout(toast.h); toast.h = setTimeout(() => t.className = "", 2200); }
@@ -173,7 +228,7 @@ function boot() {
 
 function go(t) {
   tab = t;
-  ["s-home", "s-write", "s-log", "s-admin"].forEach(id => $("#" + id).classList.toggle("hide", id !== t));
+  ["s-home", "s-write", "s-fund", "s-log", "s-admin"].forEach(id => $("#" + id).classList.toggle("hide", id !== t));
   document.querySelectorAll("nav button").forEach(b => b.setAttribute("aria-current", b.dataset.t === t));
   if (t === "s-admin") renderAdmin();
 }
@@ -182,9 +237,12 @@ document.querySelectorAll("nav button").forEach(b => b.onclick = () => { go(b.da
 const today = () => { const d = new Date(), p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
 const live = () => D.recs.filter(r => !r.del);
 
-function renderAll() { renderHome(); renderPick(); renderLog(); if (tab === "s-admin") renderAdmin(); }
+function renderAll() { renderHome(); renderPick(); renderFund(); renderLog(); if (tab === "s-admin") renderAdmin(); }
 
 function renderHome() {
+  $("#balG").textContent = fmt(D.bal["문파자금"]) + "전"; $("#balGs").textContent = man(D.bal["문파자금"]) + fcLine("문파자금");
+  $("#balC").textContent = fmt(D.bal["현금"]) + "원"; $("#balCs").textContent = man(D.bal["현금"]) + fcLine("현금");
+  $("#castleBox").innerHTML = CASTLES.map(c => `<div><span class="sub">${c}</span><div class="num">${fmt(D.castles[c] || 0)}</div></div>`).join("");
   $("#stock").textContent = fmt(D.stock);
   const c = D.checks[D.checks.length - 1];
   $("#chk").innerHTML = c ? `최근 검산 ${esc(c.t.slice(5))} · 보고 ${fmt(c.reported)} / 계산 ${fmt(c.calc)} · <b class="${c.diff === 0 ? "ok" : "bad"}">${c.diff === 0 ? "일치" : "차이 " + (c.diff > 0 ? "+" : "") + fmt(c.diff)}</b>` : "검산 기록 없음";
@@ -251,15 +309,98 @@ async function submitRec() {
 /* ---------- 기록 ---------- */
 function renderLog() {
   const q = $("#logQ").value.trim();
+  if (logMode === "f") {
+    const L = D.funds.slice().reverse().filter(r => !q || (r.target + r.cat + r.memo + r.acct).includes(q)).slice(0, 150);
+    $("#logList").innerHTML = L.map(r => `<div class="it ${r.del ? "del" : ""}"><div class="grow"><div><b class="${r.dir === "수입" ? "t-회수" : "t-불출"}">${r.dir}</b> ${esc(r.cat)} ${r.target ? `<span class="tag">${esc(r.target)}</span>` : ""} <span class="tag">${esc(r.acct)}</span></div><div class="sub">${esc(r.t)}${r.memo ? " · " + esc(r.memo) : ""}</div></div><div class="num">${r.dir === "수입" ? "+" : "−"}${fmt(r.amt)}</div><button class="sm ghost" onclick="delFund('${r.id}',${r.del})">${r.del ? "복구" : "삭제"}</button></div>`).join("") || `<div class="sub">기록 없음</div>`;
+    return;
+  }
   const L = D.recs.slice().reverse().filter(r => !q || r.name.includes(q) || r.memo.includes(q)).slice(0, 150);
   $("#logList").innerHTML = L.map(r => `<div class="it ${r.del ? "del" : ""}"><div class="grow"><div><b class="t-${r.type}">${r.type}</b> ${esc(r.name || "")} ${r.role ? `<span class="tag">${esc(r.role)}</span>` : ""}</div><div class="sub">${esc(r.t)}${r.memo ? " · " + esc(r.memo) : ""}</div></div><div class="num">${fmt(r.qty)}</div><button class="sm ghost" onclick="delRec('${r.id}',${r.del})">${r.del ? "복구" : "삭제"}</button></div>`).join("") || `<div class="sub">기록 없음</div>`;
 }
 async function delRec(id, undo) { if (!undo && !confirm("이 기록을 삭제할까요? (복구 가능)")) return; await write("del", { id, undo }); }
 
+
+/* ---------- 자금 ---------- */
+const CASTLES = ["백호", "현무", "청룡", "주작"];
+const CAT_IN = ["성 수입", "은나무 판매", "어금니", "용무기", "포인트 정산", "기타"];
+const CAT_OUT = ["빨시 구매", "방쿠 구매", "어금니", "용무기", "포인트 정산", "기타"];
+const UNIT = { "문파자금": "전", "현금": "원" };
+let fmode = "수입", facct = "문파자금", fcat = "성 수입", fcastle = "", fcAcct = "문파자금", logMode = "r";
+
+function parseAmt(s) {
+  s = String(s || "").replace(/[,\s전원]/g, "");
+  const m = s.match(/^(\d+(?:\.\d+)?)(억|만)?$/); if (!m) return 0;
+  return Math.round(Number(m[1]) * (m[2] === "억" ? 1e8 : m[2] === "만" ? 1e4 : 1));
+}
+function man(n) { return Math.abs(n) >= 10000 ? "(" + (n / 10000).toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + "만)" : ""; }
+function fcLine(acct) {
+  const c = D.fchecks.filter(x => x.acct === acct).pop();
+  return c ? ` · 검산 ${c.diff === 0 ? "일치" : "차이 " + (c.diff > 0 ? "+" : "") + fmt(c.diff)}` : "";
+}
+function chips(id, arr, cur, fn) {
+  $(id).innerHTML = arr.map(v => `<button class="chip ${v === cur ? "on" : ""}" data-v="${esc(v)}">${esc(v)}</button>`).join("");
+  $(id).querySelectorAll("button").forEach(b => b.onclick = () => fn(b.dataset.v));
+}
+function renderFund() {
+  chips("#fmodeChips", ["수입", "지출", "바돈", "빨시구매"], fmode, v => { fmode = v; if (v === "수입") fcat = "성 수입"; else if (v === "지출") fcat = "빨시 구매"; renderFund(); });
+  $("#fMain").classList.toggle("hide", fmode !== "수입" && fmode !== "지출");
+  $("#fBar").classList.toggle("hide", fmode !== "바돈");
+  $("#fBuy").classList.toggle("hide", fmode !== "빨시구매");
+  if (fmode === "수입" || fmode === "지출") {
+    chips("#acctChips", ["문파자금", "현금"], facct, v => { facct = v; renderFund(); });
+    const cats = fmode === "수입" ? CAT_IN : CAT_OUT;
+    if (cats.indexOf(fcat) < 0) fcat = cats[0];
+    chips("#catChips", cats, fcat, v => { fcat = v; renderFund(); });
+    const isC = fmode === "수입" && fcat === "성 수입";
+    $("#castleRow").classList.toggle("hide", !isC);
+    if (isC) chips("#castleChips", CASTLES, fcastle, v => { fcastle = v; renderFund(); });
+    $("#fTarget").classList.toggle("hide", isC);
+  }
+  fPrev();
+}
+function fPrev() {
+  const a = parseAmt($("#fAmt").value); $("#fAmtP").textContent = a ? fmt(a) + UNIT[facct] + " " + man(a) : "";
+  const c = parseAmt($("#bCash").value), g = parseAmt($("#bGold").value);
+  $("#bP").textContent = (c || g) ? `현금 −${fmt(c)}원 / 문파자금 +${fmt(g)}전 ${man(g)}` : "";
+  const q = Number($("#yQty").value) || 0, u = parseAmt($("#yUnit").value);
+  $("#yP").textContent = (q && u) ? `합계 ${fmt(q * u)}전 ${man(q * u)}` : "";
+}
+async function submitFund() {
+  const memo = $("#fMemo").value.trim(); let payload, sum;
+  if (fmode === "수입" || fmode === "지출") {
+    const amt = parseAmt($("#fAmt").value); if (!amt) return toast("금액을 확인해 주세요", 1);
+    let target = $("#fTarget").value.trim();
+    if (fmode === "수입" && fcat === "성 수입") { if (!fcastle) return toast("성을 골라 주세요", 1); target = fcastle; }
+    payload = { funds: [{ acct: facct, dir: fmode, cat: fcat, amt, target, memo }] };
+    sum = `${facct} ${fmode} · ${fcat}${target ? " (" + target + ")" : ""}\n${fmt(amt)}${UNIT[facct]}`;
+  } else if (fmode === "바돈") {
+    const c = parseAmt($("#bCash").value), g = parseAmt($("#bGold").value); if (!c || !g) return toast("현금과 전 금액을 모두 적어 주세요", 1);
+    payload = { funds: [{ acct: "현금", dir: "지출", cat: "바돈", amt: c, memo }, { acct: "문파자금", dir: "수입", cat: "바돈", amt: g, memo }] };
+    sum = `바돈 · 현금 −${fmt(c)}원 / 문파자금 +${fmt(g)}전`;
+  } else {
+    const q = Number($("#yQty").value) || 0, u = parseAmt($("#yUnit").value); if (!q || !u) return toast("개수와 가격을 확인해 주세요", 1);
+    const m = `개당 ${fmt(u)}전` + (memo ? " · " + memo : "");
+    payload = { rows: [{ type: "입고", name: "", qty: q, memo: "구매 " + m }], funds: [{ acct: "문파자금", dir: "지출", cat: "빨시 구매", amt: q * u, memo: `빨시 ${fmt(q)}개 · ` + m }] };
+    sum = `빨시 ${fmt(q)}개 구매 · 문파자금 −${fmt(q * u)}전`;
+  }
+  if (!confirm(sum + "\n저장할까요?")) return;
+  const r = await write("add", payload);
+  if (r) { ["#fAmt", "#fTarget", "#fMemo", "#bCash", "#bGold", "#yQty", "#yUnit"].forEach(s => $(s).value = ""); fcastle = ""; renderFund(); toast("저장했어요"); }
+}
+async function delFund(id, undo) { if (!undo && !confirm("이 기록을 삭제할까요? (복구 가능)")) return; await write("fdel", { id, undo }); }
+function setLog(m) { logMode = m; $("#lgR").classList.toggle("on", m === "r"); $("#lgF").classList.toggle("on", m === "f"); renderLog(); }
+async function submitFCheck() {
+  const v = parseAmt($("#fcQ").value); if (!v) return toast("보고 금액을 적어 주세요", 1);
+  const r = await write("fcheck", { acct: fcAcct, reported: v, memo: $("#fcM").value.trim() });
+  if (r) { $("#fcQ").value = ""; $("#fcM").value = ""; toast("검산 기록"); }
+}
+
 /* ---------- 관리 ---------- */
 function renderAdmin() {
   if (!R.length || R._src !== D.roster) { R = D.roster.map(p => ({ ...p })); R._src = D.roster; }
   drawRoster();
+  chips("#fcAcct", ["문파자금", "현금"], fcAcct, v => { fcAcct = v; renderAdmin(); });
+  $("#fcList").innerHTML = D.fchecks.slice(-5).reverse().map(c => `<div class="it"><div class="grow"><div>${esc(c.t.slice(5))} · ${esc(c.acct)} · 보고 ${fmt(c.reported)} / 계산 ${fmt(c.calc)}</div><div class="sub">${esc(c.memo)}</div></div><b class="${c.diff === 0 ? "ok" : "bad"}">${c.diff === 0 ? "일치" : (c.diff > 0 ? "+" : "") + fmt(c.diff)}</b></div>`).join("");
   $("#chkList").innerHTML = D.checks.slice(-5).reverse().map(c => `<div class="it"><div class="grow"><div>${esc(c.t.slice(5))} · 보고 ${fmt(c.reported)} / 계산 ${fmt(c.calc)}</div><div class="sub">${esc(c.memo)}</div></div><b class="${c.diff === 0 ? "ok" : "bad"}">${c.diff === 0 ? "일치" : (c.diff > 0 ? "+" : "") + fmt(c.diff)}</b></div>`).join("");
 }
 function drawRoster() {
@@ -277,6 +418,7 @@ async function submitCheck() {
   if (r) { $("#chkQ").value = ""; $("#chkM").value = ""; toast("검산 기록"); }
 }
 
+renderFund();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 boot();
 </script>
