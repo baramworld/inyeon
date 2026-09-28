@@ -146,6 +146,8 @@ nav button{font-size:13px}
   <section id="s-log" class="hide">
     <div class="seg"><button id="lgR" class="on" onclick="setLog('r')">빨시</button><button id="lgF" onclick="setLog('f')">자금</button></div>
     <input id="logQ" placeholder="검색" oninput="renderLog()">
+    <div id="fFilter" class="hide" style="margin-top:10px"></div>
+    <div id="fSum"></div>
     <div class="card list" id="logList" style="margin-top:10px"></div>
   </section>
 
@@ -311,13 +313,43 @@ async function submitRec() {
 }
 
 /* ---------- 기록 ---------- */
+
+const CAT_ALL = ["성 수입", "은나무 판매", "어금니", "용무기", "포인트 정산", "빨시 구매", "방쿠 구매", "바돈", "기타"];
+let lf = { acct: "", dir: "", cat: "", castle: "", period: "" };
+function inPeriod(t, p) {
+  if (!p) return true;
+  const d = t.slice(0, 10), td = today();
+  if (p === "오늘") return d === td;
+  if (p === "이번 달") return d.slice(0, 7) === td.slice(0, 7);
+  if (p === "최근 7일") { const x = new Date(); x.setDate(x.getDate() - 6); const pad = n => String(n).padStart(2, "0"); return d >= `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`; }
+  return true;
+}
+function fMatch(r) {
+  return (!lf.acct || r.acct === lf.acct) && (!lf.dir || r.dir === lf.dir) && (!lf.cat || r.cat === lf.cat)
+    && (!(lf.cat === "성 수입" && lf.castle) || r.target === lf.castle) && inPeriod(r.t, lf.period);
+}
+function renderFFilter() {
+  const box = $("#fFilter"); box.classList.toggle("hide", logMode !== "f");
+  if (logMode !== "f") return;
+  const G = [["계정", "acct", ["문파자금", "현금"]], ["방향", "dir", ["수입", "지출"]], ["분류", "cat", CAT_ALL]];
+  if (lf.cat === "성 수입") G.push(["성", "castle", CASTLES]);
+  G.push(["기간", "period", ["오늘", "최근 7일", "이번 달"]]);
+  box.innerHTML = `<div class="card">` + G.map(g => `<div class="sub" style="margin:8px 0 4px">${g[0]}</div><div class="row wrap" id="ff_${g[1]}"></div>`).join("") + `<button class="sm ghost" style="margin-top:10px" onclick="lf={acct:'',dir:'',cat:'',castle:'',period:''};renderLog()">필터 초기화</button></div>`;
+  G.forEach(g => chips("#ff_" + g[1], ["전체", ...g[2]], lf[g[1]] || "전체", v => { lf[g[1]] = v === "전체" ? "" : v; if (g[1] === "cat" && lf.cat !== "성 수입") lf.castle = ""; renderLog(); }));
+}
+
 function renderLog() {
   const q = $("#logQ").value.trim();
+  renderFFilter();
   if (logMode === "f") {
-    const L = D.funds.slice().reverse().filter(r => !q || (r.target + r.cat + r.memo + r.acct).includes(q)).slice(0, 150);
-    $("#logList").innerHTML = L.map(r => `<div class="it ${r.del ? "del" : ""}"><div class="grow"><div><b class="${r.dir === "수입" ? "t-회수" : "t-불출"}">${r.dir}</b> ${esc(r.cat)} ${r.target ? `<span class="tag">${esc(r.target)}</span>` : ""} <span class="tag">${esc(r.acct)}</span></div><div class="sub">${esc(r.t)}${r.memo ? " · " + esc(r.memo) : ""}</div></div><div class="num">${r.dir === "수입" ? "+" : "−"}${fmt(r.amt)}</div><button class="sm ghost" onclick="editDate('f','${r.id}','${esc(r.t)}')">날짜</button><button class="sm ghost" onclick="delFund('${r.id}',${r.del})">${r.del ? "복구" : "삭제"}</button></div>`).join("") || `<div class="sub">기록 없음</div>`;
+    const L = D.funds.slice().reverse().filter(r => fMatch(r) && (!q || (r.target + r.cat + r.memo + r.acct).includes(q)));
+    const sum = {};
+    L.forEach(r => { if (r.del) return; const s = sum[r.acct] || (sum[r.acct] = { in: 0, out: 0 }); if (r.dir === "수입") s.in += r.amt; else s.out += r.amt; });
+    $("#fSum").innerHTML = Object.keys(sum).length ? `<div class="card" style="margin-top:10px">${Object.keys(sum).map(a => { const s = sum[a], u = UNIT[a] || "", d = s.in - s.out; return `<div class="row" style="padding:4px 0"><b style="width:64px">${esc(a)}</b><div class="grow sub">수입 <b class="t-회수">${fmt(s.in)}</b> · 지출 <b class="t-불출">${fmt(s.out)}</b></div><b class="${d >= 0 ? "ok" : "bad"}">${d >= 0 ? "+" : "−"}${fmt(Math.abs(d))}${u}</b></div>`; }).join("")}<div class="sub" style="margin-top:2px">삭제한 기록은 합계에서 제외돼요 · ${L.filter(r => !r.del).length}건</div></div>` : "";
+    $("#logList").innerHTML = L.slice(0, 200).map(r => `<div class="it ${r.del ? "del" : ""}"><div class="grow"><div><b class="${r.dir === "수입" ? "t-회수" : "t-불출"}">${r.dir}</b> ${esc(r.cat)} ${r.target ? `<span class="tag">${esc(r.target)}</span>` : ""} <span class="tag">${esc(r.acct)}</span></div><div class="sub">${esc(r.t)}${r.memo ? " · " + esc(r.memo) : ""}</div></div><div class="num">${r.dir === "수입" ? "+" : "−"}${fmt(r.amt)}</div><button class="sm ghost" onclick="editDate('f','${r.id}','${esc(r.t)}')">날짜</button><button class="sm ghost" onclick="delFund('${r.id}',${r.del})">${r.del ? "복구" : "삭제"}</button></div>`).join("") || `<div class="sub">조건에 맞는 기록이 없어요</div>`;
     return;
   }
+  $("#fSum").innerHTML = "";
   const L = D.recs.slice().reverse().filter(r => !q || r.name.includes(q) || r.memo.includes(q)).slice(0, 150);
   $("#logList").innerHTML = L.map(r => `<div class="it ${r.del ? "del" : ""}"><div class="grow"><div><b class="t-${r.type}">${r.type}</b> ${esc(r.name || "")} ${r.role ? `<span class="tag">${esc(r.role)}</span>` : ""}</div><div class="sub">${esc(r.t)}${r.memo ? " · " + esc(r.memo) : ""}</div></div><div class="num">${fmt(r.qty)}</div><button class="sm ghost" onclick="editDate('r','${r.id}','${esc(r.t)}')">날짜</button><button class="sm ghost" onclick="delRec('${r.id}',${r.del})">${r.del ? "복구" : "삭제"}</button></div>`).join("") || `<div class="sub">기록 없음</div>`;
 }
