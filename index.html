@@ -98,6 +98,8 @@ nav button{font-size:13px}
       <div class="row" style="margin-top:12px">
         <div class="grow"><div class="sub" id="qLabel">수량 (전체 적용)</div><input id="q0" type="number" inputmode="numeric" min="0" oninput="applyQ()"></div>
       </div>
+      <div class="sub" style="margin-top:12px">날짜</div>
+      <input id="wDate" type="date" style="margin-top:4px">
       <input id="memo" placeholder="비고 (선택)" style="margin-top:10px">
       <button class="pri big-btn" style="margin-top:12px" onclick="submitRec()">저장</button>
     </div>
@@ -120,9 +122,9 @@ nav button{font-size:13px}
       </div>
 
       <div id="fBar" class="hide">
-        <div class="sub" style="margin-top:12px">현금으로 사서 문파자금으로 바꾸는 환전이에요</div>
-        <input id="bCash" inputmode="decimal" placeholder="현금 지출 (원)" style="margin-top:10px" oninput="fPrev()">
-        <input id="bGold" inputmode="decimal" placeholder="문파자금 수입 (전, 예: 300만)" style="margin-top:10px" oninput="fPrev()">
+        <div class="sub" style="margin-top:12px">현금으로 바돈을 산 거래예요. 숫자만 적으면 만 단위예요. 정확한 금액은 "18000원"처럼 원/전을 붙여요.</div>
+        <input id="bCash" inputmode="decimal" placeholder="현금 지출 (예: 2 = 2만원, 1.8 = 1.8만원)" style="margin-top:10px" oninput="fPrev()">
+        <input id="bGold" inputmode="decimal" placeholder="현금으로 구매한 바돈 금액 (예: 1 = 1만전, 1.8 = 1만8천전)" style="margin-top:10px" oninput="fPrev()">
         <div class="sub" id="bP" style="margin-top:4px"></div>
       </div>
 
@@ -133,6 +135,8 @@ nav button{font-size:13px}
         <div class="sub" id="yP" style="margin-top:4px"></div>
       </div>
 
+      <div class="sub" style="margin-top:12px">날짜</div>
+      <input id="fDate" type="date" style="margin-top:4px">
       <input id="fMemo" placeholder="비고 (선택)" style="margin-top:10px">
       <button class="pri big-btn" style="margin-top:12px" onclick="submitFund()">저장</button>
     </div>
@@ -302,8 +306,8 @@ async function submitRec() {
   if (!rows.length) return toast("대상과 수량을 확인해 주세요", 1);
   const sum = rows.reduce((a, r) => a + r.qty, 0);
   if (!confirm(`${type} ${rows.length}건 · 합계 ${fmt(sum)}개\n저장할까요?`)) return;
-  const r = await write("add", { rows });
-  if (r) { sel = []; $("#q0").value = ""; $("#memo").value = ""; $("#filter").value = ""; renderPick(); toast("저장했어요"); }
+  const r = await write("add", { rows, date: $("#wDate").value });
+  if (r) { $("#wDate").value = today(); sel = []; $("#q0").value = ""; $("#memo").value = ""; $("#filter").value = ""; renderPick(); toast("저장했어요"); }
 }
 
 /* ---------- 기록 ---------- */
@@ -311,11 +315,20 @@ function renderLog() {
   const q = $("#logQ").value.trim();
   if (logMode === "f") {
     const L = D.funds.slice().reverse().filter(r => !q || (r.target + r.cat + r.memo + r.acct).includes(q)).slice(0, 150);
-    $("#logList").innerHTML = L.map(r => `<div class="it ${r.del ? "del" : ""}"><div class="grow"><div><b class="${r.dir === "수입" ? "t-회수" : "t-불출"}">${r.dir}</b> ${esc(r.cat)} ${r.target ? `<span class="tag">${esc(r.target)}</span>` : ""} <span class="tag">${esc(r.acct)}</span></div><div class="sub">${esc(r.t)}${r.memo ? " · " + esc(r.memo) : ""}</div></div><div class="num">${r.dir === "수입" ? "+" : "−"}${fmt(r.amt)}</div><button class="sm ghost" onclick="delFund('${r.id}',${r.del})">${r.del ? "복구" : "삭제"}</button></div>`).join("") || `<div class="sub">기록 없음</div>`;
+    $("#logList").innerHTML = L.map(r => `<div class="it ${r.del ? "del" : ""}"><div class="grow"><div><b class="${r.dir === "수입" ? "t-회수" : "t-불출"}">${r.dir}</b> ${esc(r.cat)} ${r.target ? `<span class="tag">${esc(r.target)}</span>` : ""} <span class="tag">${esc(r.acct)}</span></div><div class="sub">${esc(r.t)}${r.memo ? " · " + esc(r.memo) : ""}</div></div><div class="num">${r.dir === "수입" ? "+" : "−"}${fmt(r.amt)}</div><button class="sm ghost" onclick="editDate('f','${r.id}','${esc(r.t)}')">날짜</button><button class="sm ghost" onclick="delFund('${r.id}',${r.del})">${r.del ? "복구" : "삭제"}</button></div>`).join("") || `<div class="sub">기록 없음</div>`;
     return;
   }
   const L = D.recs.slice().reverse().filter(r => !q || r.name.includes(q) || r.memo.includes(q)).slice(0, 150);
-  $("#logList").innerHTML = L.map(r => `<div class="it ${r.del ? "del" : ""}"><div class="grow"><div><b class="t-${r.type}">${r.type}</b> ${esc(r.name || "")} ${r.role ? `<span class="tag">${esc(r.role)}</span>` : ""}</div><div class="sub">${esc(r.t)}${r.memo ? " · " + esc(r.memo) : ""}</div></div><div class="num">${fmt(r.qty)}</div><button class="sm ghost" onclick="delRec('${r.id}',${r.del})">${r.del ? "복구" : "삭제"}</button></div>`).join("") || `<div class="sub">기록 없음</div>`;
+  $("#logList").innerHTML = L.map(r => `<div class="it ${r.del ? "del" : ""}"><div class="grow"><div><b class="t-${r.type}">${r.type}</b> ${esc(r.name || "")} ${r.role ? `<span class="tag">${esc(r.role)}</span>` : ""}</div><div class="sub">${esc(r.t)}${r.memo ? " · " + esc(r.memo) : ""}</div></div><div class="num">${fmt(r.qty)}</div><button class="sm ghost" onclick="editDate('r','${r.id}','${esc(r.t)}')">날짜</button><button class="sm ghost" onclick="delRec('${r.id}',${r.del})">${r.del ? "복구" : "삭제"}</button></div>`).join("") || `<div class="sub">기록 없음</div>`;
+}
+function editDate(kind, id, cur) {
+  const send = async v => { if (/^\d{4}-\d{2}-\d{2}$/.test(v || "") && v !== cur.slice(0, 10)) { const r = await write("edit", { kind, id, date: v }); if (r) toast("날짜 수정"); } };
+  const i = document.createElement("input"); i.type = "date"; i.value = cur.slice(0, 10);
+  i.style.cssText = "position:fixed;left:50%;top:40%;width:1px;height:1px;opacity:0.01";
+  document.body.appendChild(i);
+  i.onchange = () => { const v = i.value; i.remove(); send(v); };
+  setTimeout(() => i.remove(), 60000);
+  try { i.showPicker(); } catch (e) { i.remove(); send(prompt("날짜 (YYYY-MM-DD)", cur.slice(0, 10))); }
 }
 async function delRec(id, undo) { if (!undo && !confirm("이 기록을 삭제할까요? (복구 가능)")) return; await write("del", { id, undo }); }
 
@@ -331,6 +344,12 @@ function parseAmt(s) {
   s = String(s || "").replace(/[,\s전원]/g, "");
   const m = s.match(/^(\d+(?:\.\d+)?)(억|만)?$/); if (!m) return 0;
   return Math.round(Number(m[1]) * (m[2] === "억" ? 1e8 : m[2] === "만" ? 1e4 : 1));
+}
+function parseBar(s) {
+  s = String(s || "").replace(/[,\s]/g, "");
+  const m = s.match(/^(\d+(?:\.\d+)?)(억|만)?(원|전)?$/); if (!m) return 0;
+  const mul = m[2] === "억" ? 1e8 : m[2] === "만" ? 1e4 : m[3] ? 1 : 1e4;
+  return Math.round(Number(m[1]) * mul);
 }
 function man(n) { return Math.abs(n) >= 10000 ? "(" + (n / 10000).toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + "만)" : ""; }
 function fcLine(acct) {
@@ -360,7 +379,7 @@ function renderFund() {
 }
 function fPrev() {
   const a = parseAmt($("#fAmt").value); $("#fAmtP").textContent = a ? fmt(a) + UNIT[facct] + " " + man(a) : "";
-  const c = parseAmt($("#bCash").value), g = parseAmt($("#bGold").value);
+  const c = parseBar($("#bCash").value), g = parseBar($("#bGold").value);
   $("#bP").textContent = (c || g) ? `현금 −${fmt(c)}원 / 문파자금 +${fmt(g)}전 ${man(g)}` : "";
   const q = Number($("#yQty").value) || 0, u = parseAmt($("#yUnit").value);
   $("#yP").textContent = (q && u) ? `합계 ${fmt(q * u)}전 ${man(q * u)}` : "";
@@ -374,7 +393,7 @@ async function submitFund() {
     payload = { funds: [{ acct: facct, dir: fmode, cat: fcat, amt, target, memo }] };
     sum = `${facct} ${fmode} · ${fcat}${target ? " (" + target + ")" : ""}\n${fmt(amt)}${UNIT[facct]}`;
   } else if (fmode === "바돈") {
-    const c = parseAmt($("#bCash").value), g = parseAmt($("#bGold").value); if (!c || !g) return toast("현금과 전 금액을 모두 적어 주세요", 1);
+    const c = parseBar($("#bCash").value), g = parseBar($("#bGold").value); if (!c || !g) return toast("현금과 전 금액을 모두 적어 주세요", 1);
     payload = { funds: [{ acct: "현금", dir: "지출", cat: "바돈", amt: c, memo }, { acct: "문파자금", dir: "수입", cat: "바돈", amt: g, memo }] };
     sum = `바돈 · 현금 −${fmt(c)}원 / 문파자금 +${fmt(g)}전`;
   } else {
@@ -384,8 +403,8 @@ async function submitFund() {
     sum = `빨시 ${fmt(q)}개 구매 · 문파자금 −${fmt(q * u)}전`;
   }
   if (!confirm(sum + "\n저장할까요?")) return;
-  const r = await write("add", payload);
-  if (r) { ["#fAmt", "#fTarget", "#fMemo", "#bCash", "#bGold", "#yQty", "#yUnit"].forEach(s => $(s).value = ""); fcastle = ""; renderFund(); toast("저장했어요"); }
+  payload.date = $("#fDate").value; const r = await write("add", payload);
+  if (r) { $("#fDate").value = today(); ["#fAmt", "#fTarget", "#fMemo", "#bCash", "#bGold", "#yQty", "#yUnit"].forEach(s => $(s).value = ""); fcastle = ""; renderFund(); toast("저장했어요"); }
 }
 async function delFund(id, undo) { if (!undo && !confirm("이 기록을 삭제할까요? (복구 가능)")) return; await write("fdel", { id, undo }); }
 function setLog(m) { logMode = m; $("#lgR").classList.toggle("on", m === "r"); $("#lgF").classList.toggle("on", m === "f"); renderLog(); }
@@ -418,6 +437,7 @@ async function submitCheck() {
   if (r) { $("#chkQ").value = ""; $("#chkM").value = ""; toast("검산 기록"); }
 }
 
+$("#wDate").value = today(); $("#fDate").value = today();
 renderFund();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 boot();
