@@ -121,6 +121,13 @@ nav button{font-size:13px}
         <div class="sub" id="fAmtP" style="margin-top:4px"></div>
       </div>
 
+      <div id="fBase" class="hide">
+        <div class="sub" style="margin-top:12px">지금 가진 금액을 넣어요. 각 계정에 "기초 잔액" 수입으로 기록돼요.</div>
+        <input id="baseG" inputmode="decimal" placeholder="현재 문파자금 (전, 예: 208.34만)" style="margin-top:10px" oninput="fPrev()">
+        <input id="baseC" inputmode="decimal" placeholder="현재 현금 (원, 예: 198.9만)" style="margin-top:10px" oninput="fPrev()">
+        <div class="sub" id="baseP" style="margin-top:4px"></div>
+      </div>
+
       <div id="fBar" class="hide">
         <div class="sub" style="margin-top:12px">현금으로 바돈을 산 거래예요. 숫자만 적으면 만 단위예요. 정확한 금액은 "18000원"처럼 원/전을 붙여요.</div>
         <input id="bCash" inputmode="decimal" placeholder="현금 지출 (예: 2 = 2만원, 1.8 = 1.8만원)" style="margin-top:10px" oninput="fPrev()">
@@ -265,9 +272,9 @@ function renderHome() {
 
 /* ---------- 입력 ---------- */
 function renderTypes() {
-  $("#typeChips").innerHTML = ["불출", "회수", "입고"].map(t => `<button class="chip ${t === type ? "on" : ""}" onclick="setType('${t}')">${t}</button>`).join("");
-  $("#pickArea").classList.toggle("hide", type === "입고");
-  $("#qLabel").textContent = type === "입고" ? "입고 수량" : "수량 (전체 적용)";
+  $("#typeChips").innerHTML = ["불출", "회수", "입고", "기초재고"].map(t => `<button class="chip ${t === type ? "on" : ""}" onclick="setType('${t}')">${t}</button>`).join("");
+  $("#pickArea").classList.toggle("hide", type === "입고" || type === "기초재고");
+  $("#qLabel").textContent = type === "입고" ? "입고 수량" : type === "기초재고" ? `현재 실제 보유 수량 (앱 계산 재고 ${fmt(D.stock)})` : "수량 (전체 적용)";
 }
 function setType(t) { type = t; renderTypes(); }
 
@@ -303,6 +310,16 @@ function applyQ() { const q = qNow(); sel.forEach(s => s.qty = q); renderSel(); 
 async function submitRec() {
   const memo = $("#memo").value.trim();
   let rows;
+  if (type === "기초재고") {
+    if ($("#q0").value === "") return toast("현재 보유 수량을 적어 주세요", 1);
+    const target = qNow(), diff = target - D.stock;
+    if (diff === 0) return toast("이미 앱 계산 재고와 같아요", 1);
+    if (diff < 0) return toast("앱 계산 재고가 더 많아요. 기록을 확인해 주세요", 1);
+    if (!confirm(`현재 ${fmt(target)}개 기준\n앱 재고 ${fmt(D.stock)} → ${fmt(target)}\n입고 ${fmt(diff)}개를 "기초 재고"로 기록할까요?`)) return;
+    const r = await write("add", { rows: [{ type: "입고", name: "", qty: diff, memo: memo || "기초 재고 보정" }], date: $("#wDate").value });
+    if (r) { $("#wDate").value = today(); $("#q0").value = ""; $("#memo").value = ""; renderPick(); toast("저장했어요"); }
+    return;
+  }
   if (type === "입고") rows = [{ type, name: "", qty: qNow(), memo }];
   else rows = sel.filter(s => s.qty > 0).map(s => ({ type, name: s.name, qty: s.qty, memo }));
   if (!rows.length) return toast("대상과 수량을 확인해 주세요", 1);
@@ -314,7 +331,7 @@ async function submitRec() {
 
 /* ---------- 기록 ---------- */
 
-const CAT_ALL = ["성 수입", "은나무 판매", "어금니", "용무기", "포인트 정산", "빨시 구매", "방쿠 구매", "바돈", "기타"];
+const CAT_ALL = ["기초 잔액", "성 수입", "은나무 판매", "어금니", "용무기", "포인트 정산", "빨시 구매", "방쿠 구매", "바돈", "기타"];
 let lf = { acct: "", dir: "", cat: "", castle: "", period: "" };
 function inPeriod(t, p) {
   if (!p) return true;
@@ -393,8 +410,9 @@ function chips(id, arr, cur, fn) {
   $(id).querySelectorAll("button").forEach(b => b.onclick = () => fn(b.dataset.v));
 }
 function renderFund() {
-  chips("#fmodeChips", ["수입", "지출", "바돈", "빨시구매"], fmode, v => { fmode = v; if (v === "수입") fcat = "성 수입"; else if (v === "지출") fcat = "빨시 구매"; renderFund(); });
+  chips("#fmodeChips", ["수입", "지출", "바돈", "빨시구매", "기초잔액"], fmode, v => { fmode = v; if (v === "수입") fcat = "성 수입"; else if (v === "지출") fcat = "빨시 구매"; renderFund(); });
   $("#fMain").classList.toggle("hide", fmode !== "수입" && fmode !== "지출");
+  $("#fBase").classList.toggle("hide", fmode !== "기초잔액");
   $("#fBar").classList.toggle("hide", fmode !== "바돈");
   $("#fBuy").classList.toggle("hide", fmode !== "빨시구매");
   if (fmode === "수입" || fmode === "지출") {
@@ -413,6 +431,8 @@ function fPrev() {
   const a = parseAmt($("#fAmt").value); $("#fAmtP").textContent = a ? fmt(a) + UNIT[facct] + " " + man(a) : "";
   const c = parseBar($("#bCash").value), g = parseBar($("#bGold").value);
   $("#bP").textContent = (c || g) ? `현금 −${fmt(c)}원 / 문파자금 +${fmt(g)}전 ${man(g)}` : "";
+  const bg = parseAmt($("#baseG").value), bc = parseAmt($("#baseC").value);
+  $("#baseP").textContent = (bg || bc) ? `문파자금 ${fmt(bg)}전 ${man(bg)} / 현금 ${fmt(bc)}원 ${man(bc)}` : "";
   const q = Number($("#yQty").value) || 0, u = parseAmt($("#yUnit").value);
   $("#yP").textContent = (q && u) ? `합계 ${fmt(q * u)}전 ${man(q * u)}` : "";
 }
@@ -424,6 +444,11 @@ async function submitFund() {
     if (fmode === "수입" && fcat === "성 수입") { if (!fcastle) return toast("성을 골라 주세요", 1); target = fcastle; }
     payload = { funds: [{ acct: facct, dir: fmode, cat: fcat, amt, target, memo }] };
     sum = `${facct} ${fmode} · ${fcat}${target ? " (" + target + ")" : ""}\n${fmt(amt)}${UNIT[facct]}`;
+  } else if (fmode === "기초잔액") {
+    const bg = parseAmt($("#baseG").value), bc = parseAmt($("#baseC").value); if (!bg && !bc) return toast("금액을 하나 이상 적어 주세요", 1);
+    const f = []; if (bg) f.push({ acct: "문파자금", dir: "수입", cat: "기초 잔액", amt: bg, memo }); if (bc) f.push({ acct: "현금", dir: "수입", cat: "기초 잔액", amt: bc, memo });
+    payload = { funds: f };
+    sum = `기초 잔액` + (bg ? `\n문파자금 ${fmt(bg)}전` : "") + (bc ? `\n현금 ${fmt(bc)}원` : "");
   } else if (fmode === "바돈") {
     const c = parseBar($("#bCash").value), g = parseBar($("#bGold").value); if (!c || !g) return toast("현금과 전 금액을 모두 적어 주세요", 1);
     payload = { funds: [{ acct: "현금", dir: "지출", cat: "바돈", amt: c, memo }, { acct: "문파자금", dir: "수입", cat: "바돈", amt: g, memo }] };
@@ -436,7 +461,7 @@ async function submitFund() {
   }
   if (!confirm(sum + "\n저장할까요?")) return;
   payload.date = $("#fDate").value; const r = await write("add", payload);
-  if (r) { $("#fDate").value = today(); ["#fAmt", "#fTarget", "#fMemo", "#bCash", "#bGold", "#yQty", "#yUnit"].forEach(s => $(s).value = ""); fcastle = ""; renderFund(); toast("저장했어요"); }
+  if (r) { $("#fDate").value = today(); ["#fAmt", "#fTarget", "#fMemo", "#bCash", "#bGold", "#yQty", "#yUnit", "#baseG", "#baseC"].forEach(s => $(s).value = ""); fcastle = ""; renderFund(); toast("저장했어요"); }
 }
 async function delFund(id, undo) { if (!undo && !confirm("이 기록을 삭제할까요? (복구 가능)")) return; await write("fdel", { id, undo }); }
 function setLog(m) { logMode = m; $("#lgR").classList.toggle("on", m === "r"); $("#lgF").classList.toggle("on", m === "f"); renderLog(); }
