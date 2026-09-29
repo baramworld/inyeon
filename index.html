@@ -196,6 +196,9 @@ nav button{font-size:13px}
   <button data-t="s-admin">관리</button>
 </nav>
 <div id="toast"></div>
+<div id="busy" class="hide" style="position:fixed;inset:0;background:rgba(0,0,0,.15);z-index:8;display:flex;align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--line);padding:12px 22px;border-radius:12px;font-weight:700">저장 중…</div>
+</div>
 
 <script>
 const $ = s => document.querySelector(s);
@@ -224,11 +227,12 @@ async function load() {
 async function write(action, payload) {
   let pw = localStorage.getItem("pw") || prompt("비밀번호");
   if (!pw) return null;
+  $("#busy").classList.remove("hide");
   try {
     const r = await fetch(API, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action, pw, ...payload }) }).then(r => r.json());
     if (!r.ok) { if (r.error === "pw") { localStorage.removeItem("pw"); toast("비밀번호가 달라요", 1); } else toast(r.error || "실패", 1); return null; }
     localStorage.setItem("pw", pw); D = r.data; renderAll(); return r;
-  } catch (e) { toast("저장 실패 (네트워크)", 1); return null; }
+  } catch (e) { toast("저장 실패 (네트워크)", 1); return null; } finally { $("#busy").classList.add("hide"); }
 }
 
 function boot() {
