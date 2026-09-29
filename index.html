@@ -331,7 +331,7 @@ async function submitRec() {
 
 /* ---------- 기록 ---------- */
 
-const CAT_ALL = ["기초 잔액", "성 수입", "은나무 판매", "어금니", "용무기", "포인트 정산", "빨시 구매", "방쿠 구매", "바돈", "기타"];
+const CAT_ALL = ["기초 잔액", "성 수입", "은나무 판매", "어금니", "용무기", "포인트 정산", "빨시 구매", "방쿠 구매", "바돈구매", "기타"];
 let lf = { acct: "", dir: "", cat: "", castle: "", period: "" };
 function inPeriod(t, p) {
   if (!p) return true;
@@ -385,7 +385,7 @@ async function delRec(id, undo) { if (!undo && !confirm("이 기록을 삭제할
 /* ---------- 자금 ---------- */
 const CASTLES = ["백호", "현무", "청룡", "주작"];
 const CAT_IN = ["성 수입", "은나무 판매", "어금니", "용무기", "포인트 정산", "기타"];
-const CAT_OUT = ["빨시 구매", "방쿠 구매", "어금니", "용무기", "포인트 정산", "기타"];
+const CAT_OUT = ["빨시 구매", "방쿠 구매", "바돈구매", "어금니", "용무기", "포인트 정산", "기타"];
 const UNIT = { "문파자금": "전", "현금": "원" };
 let fmode = "수입", facct = "문파자금", fcat = "성 수입", fcastle = "", fcAcct = "문파자금", logMode = "r";
 
@@ -410,10 +410,10 @@ function chips(id, arr, cur, fn) {
   $(id).querySelectorAll("button").forEach(b => b.onclick = () => fn(b.dataset.v));
 }
 function renderFund() {
-  chips("#fmodeChips", ["수입", "지출", "바돈", "빨시구매", "기초잔액"], fmode, v => { fmode = v; if (v === "수입") fcat = "성 수입"; else if (v === "지출") fcat = "빨시 구매"; renderFund(); });
+  chips("#fmodeChips", ["수입", "지출", "바돈구매", "빨시구매", "기초잔액"], fmode, v => { fmode = v; if (v === "수입") fcat = "성 수입"; else if (v === "지출") fcat = "빨시 구매"; else if (v === "빨시구매") {} renderFund(); });
   $("#fMain").classList.toggle("hide", fmode !== "수입" && fmode !== "지출");
   $("#fBase").classList.toggle("hide", fmode !== "기초잔액");
-  $("#fBar").classList.toggle("hide", fmode !== "바돈");
+  $("#fBar").classList.toggle("hide", fmode !== "바돈구매");
   $("#fBuy").classList.toggle("hide", fmode !== "빨시구매");
   if (fmode === "수입" || fmode === "지출") {
     chips("#acctChips", ["문파자금", "현금"], facct, v => { facct = v; renderFund(); });
@@ -449,10 +449,10 @@ async function submitFund() {
     const f = []; if (bg) f.push({ acct: "문파자금", dir: "수입", cat: "기초 잔액", amt: bg, memo }); if (bc) f.push({ acct: "현금", dir: "수입", cat: "기초 잔액", amt: bc, memo });
     payload = { funds: f };
     sum = `기초 잔액` + (bg ? `\n문파자금 ${fmt(bg)}전` : "") + (bc ? `\n현금 ${fmt(bc)}원` : "");
-  } else if (fmode === "바돈") {
+  } else if (fmode === "바돈구매") {
     const c = parseBar($("#bCash").value), g = parseBar($("#bGold").value); if (!c || !g) return toast("현금과 전 금액을 모두 적어 주세요", 1);
-    payload = { funds: [{ acct: "현금", dir: "지출", cat: "바돈", amt: c, memo }, { acct: "문파자금", dir: "수입", cat: "바돈", amt: g, memo }] };
-    sum = `바돈 · 현금 −${fmt(c)}원 / 문파자금 +${fmt(g)}전`;
+    payload = { funds: [{ acct: "현금", dir: "지출", cat: "바돈구매", amt: c, memo }, { acct: "문파자금", dir: "수입", cat: "바돈구매", amt: g, memo }] };
+    sum = `바돈구매 · 현금 −${fmt(c)}원 / 문파자금 +${fmt(g)}전`;
   } else {
     const q = Number($("#yQty").value) || 0, u = parseAmt($("#yUnit").value); if (!q || !u) return toast("개수와 가격을 확인해 주세요", 1);
     const m = `개당 ${fmt(u)}전` + (memo ? " · " + memo : "");
