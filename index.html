@@ -71,16 +71,8 @@ nav button{font-size:13px}
       <div class="card"><div class="sub">현금</div><div class="mid" id="balC">-</div><div class="sub" id="balCs"></div></div>
     </div>
     <div class="card"><div class="sub" style="margin-bottom:6px">성 수입 누적 (전)</div><div class="g2" id="castleBox"></div></div>
-    <div class="card">
-      <div class="sub">현재 재고 (빨간시약)</div>
-      <div class="big" id="stock">-</div>
-      <div class="sub" id="chk" style="margin-top:6px"></div>
-    </div>
-    <div class="card row">
-      <div class="grow"><div class="sub">오늘 불출</div><div class="num" id="todayOut" style="font-size:22px">-</div></div>
-      <div class="grow"><div class="sub">오늘 회수</div><div class="num" id="todayIn" style="font-size:22px">-</div></div>
-      <div class="grow"><div class="sub">미반납 인원</div><div class="num" id="outCnt" style="font-size:22px">-</div></div>
-    </div>
+    <div class="g2" style="margin-bottom:10px" id="stockBox"></div>
+    <div class="card" id="todayBox"></div>
     <h2>미반납 (불출 − 회수)</h2>
     <div class="card list" id="outList"></div>
   </section>
@@ -88,7 +80,8 @@ nav button{font-size:13px}
   <!-- 입력 -->
   <section id="s-write" class="hide">
     <div class="card">
-      <div class="row wrap" id="typeChips"></div>
+      <div class="row wrap" id="itemChips"></div>
+      <div class="row wrap" id="typeChips" style="margin-top:10px"></div>
       <div id="pickArea">
         <div class="row wrap" id="roleBtns" style="margin-top:12px"></div>
         <input id="filter" placeholder="이름 검색 / 새 이름 입력" style="margin-top:10px" oninput="renderPick()">
@@ -136,8 +129,9 @@ nav button{font-size:13px}
       </div>
 
       <div id="fBuy" class="hide">
-        <div class="sub" style="margin-top:12px">빨시 입고와 문파자금 지출이 같이 기록돼요</div>
-        <input id="yQty" type="number" inputmode="numeric" placeholder="빨시 개수" style="margin-top:10px" oninput="fPrev()">
+        <div class="sub" style="margin-top:12px">품목 입고와 문파자금 지출이 같이 기록돼요</div>
+        <div class="row wrap" id="buyItemChips" style="margin-top:8px"></div>
+        <input id="yQty" type="number" inputmode="numeric" placeholder="개수" style="margin-top:10px" oninput="fPrev()">
         <input id="yUnit" inputmode="decimal" placeholder="개당 가격 (전, 예: 1.4만)" style="margin-top:10px" oninput="fPrev()">
         <div class="sub" id="yP" style="margin-top:4px"></div>
       </div>
@@ -151,8 +145,9 @@ nav button{font-size:13px}
 
   <!-- 기록 -->
   <section id="s-log" class="hide">
-    <div class="seg"><button id="lgR" class="on" onclick="setLog('r')">빨시</button><button id="lgF" onclick="setLog('f')">자금</button></div>
-    <input id="logQ" placeholder="검색" oninput="renderLog()">
+    <div class="seg"><button id="lgR" class="on" onclick="setLog('r')">품목</button><button id="lgF" onclick="setLog('f')">자금</button></div>
+    <div id="rFilter" class="row wrap"></div>
+    <input id="logQ" placeholder="검색" style="margin-top:8px" oninput="renderLog()">
     <div id="fFilter" class="hide" style="margin-top:10px"></div>
     <div id="fSum"></div>
     <div class="card list" id="logList" style="margin-top:10px"></div>
@@ -163,7 +158,8 @@ nav button{font-size:13px}
     <h2>재고 검산</h2>
     <div class="card">
       <p class="sub" style="margin-top:0">카톡으로 받은 "남은 수량"을 적으면 계산값과 비교해서 남겨요.</p>
-      <div class="row"><input id="chkQ" type="number" inputmode="numeric" placeholder="보고 수량"><input id="chkM" placeholder="메모"></div>
+      <div class="row wrap" id="ckItemChips"></div>
+      <div class="row" style="margin-top:8px"><input id="chkQ" type="number" inputmode="numeric" placeholder="보고 수량"><input id="chkM" placeholder="메모"></div>
       <button class="big-btn" style="margin-top:10px" onclick="submitCheck()">검산 기록</button>
       <div class="list" id="chkList" style="margin-top:8px"></div>
     </div>
@@ -206,8 +202,8 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 const fmt = n => Number(n || 0).toLocaleString("ko-KR");
 const DEFAULT_API = "https://script.google.com/macros/s/AKfycbywfRyr2Aqul63z1v9sjbw9Y6K-kC5sTht5h78yN59buC9A0WCZkc6Or3v5WGLPKRNw/exec";
 let API = localStorage.getItem("api") || DEFAULT_API;
-let D = { roster: [], recs: [], checks: [], stock: 0, funds: [], fchecks: [], bal: {"문파자금":0,"현금":0}, castles: {} };
-let type = "불출", sel = [], R = [], tab = "s-home";
+let D = { roster: [], recs: [], checks: [], stock: {"빨시":0,"맑시":0}, funds: [], fchecks: [], bal: {"문파자금":0,"현금":0}, castles: {}, items: ["빨시","맑시"] };
+let type = "불출", item = "빨시", buyItem = "빨시", ckItem = "빨시", sel = [], R = [], tab = "s-home";
 
 function toast(m, err) { const t = $("#toast"); t.textContent = m; t.className = "show" + (err ? " err" : ""); clearTimeout(toast.h); toast.h = setTimeout(() => t.className = "", 2200); }
 
@@ -256,29 +252,31 @@ const live = () => D.recs.filter(r => !r.del);
 
 function renderAll() { renderHome(); renderPick(); renderFund(); renderLog(); if (tab === "s-admin") renderAdmin(); }
 
+function lastCheckOf(item_) { const arr = D.checks.filter(c => (c.item || "빨시") === item_); return arr[arr.length - 1]; }
 function renderHome() {
   $("#balG").textContent = fmt(D.bal["문파자금"]) + "전"; $("#balGs").textContent = man(D.bal["문파자금"]) + fcLine("문파자금");
   $("#balC").textContent = fmt(D.bal["현금"]) + "원"; $("#balCs").textContent = man(D.bal["현금"]) + fcLine("현금");
   $("#castleBox").innerHTML = CASTLES.map(c => `<div><span class="sub">${c}</span><div class="num">${fmt(D.castles[c] || 0)}</div></div>`).join("");
-  $("#stock").textContent = fmt(D.stock);
-  const c = D.checks[D.checks.length - 1];
-  $("#chk").innerHTML = c ? `최근 검산 ${esc(c.t.slice(5))} · 보고 ${fmt(c.reported)} / 계산 ${fmt(c.calc)} · <b class="${c.diff === 0 ? "ok" : "bad"}">${c.diff === 0 ? "일치" : "차이 " + (c.diff > 0 ? "+" : "") + fmt(c.diff)}</b>` : "검산 기록 없음";
+
+  $("#stockBox").innerHTML = ITEMS.map(it => { const c = lastCheckOf(it); const chk = c ? ` · 검산 ${c.diff === 0 ? "일치" : (c.diff > 0 ? "+" : "") + fmt(c.diff)}` : ""; return `<div class="card"><div class="sub">${it} 재고</div><div class="mid">${fmt((D.stock || {})[it])}</div><div class="sub">${chk}</div></div>`; }).join("");
+
   const td = today(), L = live().filter(r => r.t.startsWith(td));
-  $("#todayOut").textContent = fmt(L.filter(r => r.type === "불출").reduce((a, r) => a + r.qty, 0));
-  $("#todayIn").textContent = fmt(L.filter(r => r.type === "회수").reduce((a, r) => a + r.qty, 0));
+  $("#todayBox").innerHTML = `<div class="sub" style="margin-bottom:6px">오늘 현황</div>` + ITEMS.map(it => { const o = L.filter(r => r.item === it && r.type === "불출").reduce((a, r) => a + r.qty, 0), i = L.filter(r => r.item === it && r.type === "회수").reduce((a, r) => a + r.qty, 0); return `<div class="row" style="padding:4px 0"><b style="width:52px">${it}</b><div class="grow sub">불출 <b class="t-불출">${fmt(o)}</b> · 회수 <b class="t-회수">${fmt(i)}</b></div></div>`; }).join("");
+
   const m = {};
-  live().forEach(r => { if (!r.name) return; if (r.type === "불출") m[r.name] = (m[r.name] || 0) + r.qty; else if (r.type === "회수") m[r.name] = (m[r.name] || 0) - r.qty; });
+  live().forEach(r => { if (!r.name) return; const k = r.name + "|" + r.item; if (r.type === "불출") m[k] = (m[k] || 0) + r.qty; else if (r.type === "회수") m[k] = (m[k] || 0) - r.qty; });
   const roleOf = {}; D.roster.forEach(p => roleOf[p.name] = p.role);
   const out = Object.entries(m).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-  $("#outCnt").textContent = out.length;
-  $("#outList").innerHTML = out.length ? out.map(([n, v]) => `<div class="it"><div class="grow">${esc(n)} ${roleOf[n] ? `<span class="tag">${esc(roleOf[n])}</span>` : ""}</div><div class="num">${fmt(v)}</div></div>`).join("") : `<div class="sub">미반납 없음</div>`;
+  $("#outCnt") && ($("#outCnt").textContent = out.length);
+  $("#outList").innerHTML = out.length ? out.map(([k, v]) => { const [n, it] = k.split("|"); return `<div class="it"><div class="grow">${esc(n)} ${roleOf[n] ? `<span class="tag">${esc(roleOf[n])}</span>` : ""} <span class="tag">${esc(it)}</span></div><div class="num">${fmt(v)}</div></div>`; }).join("") : `<div class="sub">미반납 없음</div>`;
 }
 
 /* ---------- 입력 ---------- */
 function renderTypes() {
+  chips("#itemChips", ITEMS, item, v => { item = v; renderPick(); });
   $("#typeChips").innerHTML = ["불출", "회수", "입고", "기초재고"].map(t => `<button class="chip ${t === type ? "on" : ""}" onclick="setType('${t}')">${t}</button>`).join("");
   $("#pickArea").classList.toggle("hide", type === "입고" || type === "기초재고");
-  $("#qLabel").textContent = type === "입고" ? "입고 수량" : type === "기초재고" ? `현재 실제 보유 수량 (앱 계산 재고 ${fmt(D.stock)})` : "수량 (전체 적용)";
+  $("#qLabel").textContent = type === "입고" ? `${item} 입고 수량` : type === "기초재고" ? `현재 실제 보유 ${item} 수량 (앱 계산 재고 ${fmt((D.stock || {})[item])})` : "수량 (전체 적용)";
 }
 function setType(t) { type = t; renderTypes(); }
 
@@ -316,26 +314,26 @@ async function submitRec() {
   let rows;
   if (type === "기초재고") {
     if ($("#q0").value === "") return toast("현재 보유 수량을 적어 주세요", 1);
-    const target = qNow(), diff = target - D.stock;
+    const target = qNow(), cur = (D.stock || {})[item] || 0, diff = target - cur;
     if (diff === 0) return toast("이미 앱 계산 재고와 같아요", 1);
     if (diff < 0) return toast("앱 계산 재고가 더 많아요. 기록을 확인해 주세요", 1);
-    if (!confirm(`현재 ${fmt(target)}개 기준\n앱 재고 ${fmt(D.stock)} → ${fmt(target)}\n입고 ${fmt(diff)}개를 "기초 재고"로 기록할까요?`)) return;
-    const r = await write("add", { rows: [{ type: "입고", name: "", qty: diff, memo: memo || "기초 재고 보정" }], date: $("#wDate").value });
+    if (!confirm(`${item} 현재 ${fmt(target)}개 기준\n앱 재고 ${fmt(cur)} → ${fmt(target)}\n입고 ${fmt(diff)}개를 "기초 재고"로 기록할까요?`)) return;
+    const r = await write("add", { rows: [{ type: "입고", name: "", qty: diff, memo: memo || "기초 재고 보정", item }], date: $("#wDate").value });
     if (r) { $("#wDate").value = today(); $("#q0").value = ""; $("#memo").value = ""; renderPick(); toast("저장했어요"); }
     return;
   }
-  if (type === "입고") rows = [{ type, name: "", qty: qNow(), memo }];
-  else rows = sel.filter(s => s.qty > 0).map(s => ({ type, name: s.name, qty: s.qty, memo }));
+  if (type === "입고") rows = [{ type, name: "", qty: qNow(), memo, item }];
+  else rows = sel.filter(s => s.qty > 0).map(s => ({ type, name: s.name, qty: s.qty, memo, item }));
   if (!rows.length) return toast("대상과 수량을 확인해 주세요", 1);
   const sum = rows.reduce((a, r) => a + r.qty, 0);
-  if (!confirm(`${type} ${rows.length}건 · 합계 ${fmt(sum)}개\n저장할까요?`)) return;
+  if (!confirm(`${item} ${type} ${rows.length}건 · 합계 ${fmt(sum)}개\n저장할까요?`)) return;
   const r = await write("add", { rows, date: $("#wDate").value });
   if (r) { $("#wDate").value = today(); sel = []; $("#q0").value = ""; $("#memo").value = ""; $("#filter").value = ""; renderPick(); toast("저장했어요"); }
 }
 
 /* ---------- 기록 ---------- */
 
-const CAT_ALL = ["기초 잔액", "성 수입", "은나무 판매", "어금니", "용무기", "포인트 정산", "빨시 구매", "방쿠 구매", "바돈구매", "기타"];
+const CAT_ALL = ["기초 잔액", "성 수입", "은나무 판매", "어금니", "용무기", "포인트 정산", "빨시 구매", "맑시 구매", "방쿠 구매", "바돈구매", "기타"];
 let lf = { acct: "", dir: "", cat: "", castle: "", period: "" };
 function inPeriod(t, p) {
   if (!p) return true;
@@ -362,6 +360,8 @@ function renderFFilter() {
 function renderLog() {
   const q = $("#logQ").value.trim();
   renderFFilter();
+  $("#rFilter").classList.toggle("hide", logMode !== "r");
+  if (logMode === "r") chips("#rFilter", ["전체", ...ITEMS], rItem || "전체", v => { rItem = v === "전체" ? "" : v; renderLog(); });
   if (logMode === "f") {
     const L = D.funds.slice().reverse().filter(r => fMatch(r) && (!q || (r.target + r.cat + r.memo + r.acct).includes(q)));
     const sum = {};
@@ -371,8 +371,8 @@ function renderLog() {
     return;
   }
   $("#fSum").innerHTML = "";
-  const L = D.recs.slice().reverse().filter(r => !q || r.name.includes(q) || r.memo.includes(q)).slice(0, 150);
-  $("#logList").innerHTML = L.map(r => `<div class="it ${r.del ? "del" : ""}"><div class="grow"><div><b class="t-${r.type}">${r.type}</b> ${esc(r.name || "")} ${r.role ? `<span class="tag">${esc(r.role)}</span>` : ""}</div><div class="sub">${esc(r.t)}${r.memo ? " · " + esc(r.memo) : ""}</div></div><div class="num">${fmt(r.qty)}</div><button class="sm ghost" onclick="editDate('r','${r.id}','${esc(r.t)}')">날짜</button><button class="sm ghost" onclick="delRec('${r.id}',${r.del})">${r.del ? "복구" : "삭제"}</button></div>`).join("") || `<div class="sub">기록 없음</div>`;
+  const L = D.recs.slice().reverse().filter(r => (!rItem || r.item === rItem) && (!q || r.name.includes(q) || r.memo.includes(q))).slice(0, 150);
+  $("#logList").innerHTML = L.map(r => `<div class="it ${r.del ? "del" : ""}"><div class="grow"><div><b class="t-${r.type}">${r.type}</b> ${esc(r.name || "")} ${r.role ? `<span class="tag">${esc(r.role)}</span>` : ""} <span class="tag">${esc(r.item)}</span></div><div class="sub">${esc(r.t)}${r.memo ? " · " + esc(r.memo) : ""}</div></div><div class="num">${fmt(r.qty)}</div><button class="sm ghost" onclick="editDate('r','${r.id}','${esc(r.t)}')">날짜</button><button class="sm ghost" onclick="delRec('${r.id}',${r.del})">${r.del ? "복구" : "삭제"}</button></div>`).join("") || `<div class="sub">기록 없음</div>`;
 }
 function editDate(kind, id, cur) {
   const send = async v => { if (/^\d{4}-\d{2}-\d{2}$/.test(v || "") && v !== cur.slice(0, 10)) { const r = await write("edit", { kind, id, date: v }); if (r) toast("날짜 수정"); } };
@@ -388,8 +388,10 @@ async function delRec(id, undo) { if (!undo && !confirm("이 기록을 삭제할
 
 /* ---------- 자금 ---------- */
 const CASTLES = ["백호", "현무", "청룡", "주작"];
+const ITEMS = D.items && D.items.length ? D.items : ["빨시", "맑시"];
+let rItem = "";
 const CAT_IN = ["성 수입", "은나무 판매", "어금니", "용무기", "포인트 정산", "기타"];
-const CAT_OUT = ["빨시 구매", "방쿠 구매", "바돈구매", "어금니", "용무기", "포인트 정산", "기타"];
+const CAT_OUT = [...ITEMS.map(i => i + " 구매"), "방쿠 구매", "바돈구매", "어금니", "용무기", "포인트 정산", "기타"];
 const UNIT = { "문파자금": "전", "현금": "원" };
 let fmode = "수입", facct = "문파자금", fcat = "성 수입", fcastle = "", fcAcct = "문파자금", logMode = "r";
 
@@ -414,11 +416,12 @@ function chips(id, arr, cur, fn) {
   $(id).querySelectorAll("button").forEach(b => b.onclick = () => fn(b.dataset.v));
 }
 function renderFund() {
-  chips("#fmodeChips", ["수입", "지출", "바돈구매", "빨시구매", "기초잔액"], fmode, v => { fmode = v; if (v === "수입") fcat = "성 수입"; else if (v === "지출") fcat = "빨시 구매"; else if (v === "빨시구매") {} renderFund(); });
+  chips("#fmodeChips", ["수입", "지출", "바돈구매", "품목구매", "기초잔액"], fmode, v => { fmode = v; if (v === "수입") fcat = "성 수입"; else if (v === "지출") fcat = "빨시 구매"; renderFund(); });
   $("#fMain").classList.toggle("hide", fmode !== "수입" && fmode !== "지출");
   $("#fBase").classList.toggle("hide", fmode !== "기초잔액");
   $("#fBar").classList.toggle("hide", fmode !== "바돈구매");
-  $("#fBuy").classList.toggle("hide", fmode !== "빨시구매");
+  $("#fBuy").classList.toggle("hide", fmode !== "품목구매");
+  if (fmode === "품목구매") chips("#buyItemChips", ITEMS, buyItem, v => { buyItem = v; renderFund(); });
   if (fmode === "수입" || fmode === "지출") {
     chips("#acctChips", ["문파자금", "현금"], facct, v => { facct = v; renderFund(); });
     const cats = fmode === "수입" ? CAT_IN : CAT_OUT;
@@ -438,7 +441,7 @@ function fPrev() {
   const bg = parseAmt($("#baseG").value), bc = parseAmt($("#baseC").value);
   $("#baseP").textContent = (bg || bc) ? `문파자금 ${fmt(bg)}전 ${man(bg)} / 현금 ${fmt(bc)}원 ${man(bc)}` : "";
   const q = Number($("#yQty").value) || 0, u = parseAmt($("#yUnit").value);
-  $("#yP").textContent = (q && u) ? `합계 ${fmt(q * u)}전 ${man(q * u)}` : "";
+  $("#yP").textContent = (q && u) ? `${buyItem} 합계 ${fmt(q * u)}전 ${man(q * u)}` : "";
 }
 async function submitFund() {
   const memo = $("#fMemo").value.trim(); let payload, sum;
@@ -460,8 +463,8 @@ async function submitFund() {
   } else {
     const q = Number($("#yQty").value) || 0, u = parseAmt($("#yUnit").value); if (!q || !u) return toast("개수와 가격을 확인해 주세요", 1);
     const m = `개당 ${fmt(u)}전` + (memo ? " · " + memo : "");
-    payload = { rows: [{ type: "입고", name: "", qty: q, memo: "구매 " + m }], funds: [{ acct: "문파자금", dir: "지출", cat: "빨시 구매", amt: q * u, memo: `빨시 ${fmt(q)}개 · ` + m }] };
-    sum = `빨시 ${fmt(q)}개 구매 · 문파자금 −${fmt(q * u)}전`;
+    payload = { rows: [{ type: "입고", name: "", qty: q, memo: "구매 " + m, item: buyItem }], funds: [{ acct: "문파자금", dir: "지출", cat: buyItem + " 구매", amt: q * u, memo: `${buyItem} ${fmt(q)}개 · ` + m }] };
+    sum = `${buyItem} ${fmt(q)}개 구매 · 문파자금 −${fmt(q * u)}전`;
   }
   if (!confirm(sum + "\n저장할까요?")) return;
   payload.date = $("#fDate").value; const r = await write("add", payload);
@@ -479,9 +482,10 @@ async function submitFCheck() {
 function renderAdmin() {
   if (!R.length || R._src !== D.roster) { R = D.roster.map(p => ({ ...p })); R._src = D.roster; }
   drawRoster();
+  chips("#ckItemChips", ITEMS, ckItem, v => { ckItem = v; renderAdmin(); });
   chips("#fcAcct", ["문파자금", "현금"], fcAcct, v => { fcAcct = v; renderAdmin(); });
   $("#fcList").innerHTML = D.fchecks.slice(-5).reverse().map(c => `<div class="it"><div class="grow"><div>${esc(c.t.slice(5))} · ${esc(c.acct)} · 보고 ${fmt(c.reported)} / 계산 ${fmt(c.calc)}</div><div class="sub">${esc(c.memo)}</div></div><b class="${c.diff === 0 ? "ok" : "bad"}">${c.diff === 0 ? "일치" : (c.diff > 0 ? "+" : "") + fmt(c.diff)}</b></div>`).join("");
-  $("#chkList").innerHTML = D.checks.slice(-5).reverse().map(c => `<div class="it"><div class="grow"><div>${esc(c.t.slice(5))} · 보고 ${fmt(c.reported)} / 계산 ${fmt(c.calc)}</div><div class="sub">${esc(c.memo)}</div></div><b class="${c.diff === 0 ? "ok" : "bad"}">${c.diff === 0 ? "일치" : (c.diff > 0 ? "+" : "") + fmt(c.diff)}</b></div>`).join("");
+  $("#chkList").innerHTML = D.checks.filter(c => (c.item || "빨시") === ckItem).slice(-5).reverse().map(c => `<div class="it"><div class="grow"><div>${esc(c.t.slice(5))} · ${esc(c.item)} · 보고 ${fmt(c.reported)} / 계산 ${fmt(c.calc)}</div><div class="sub">${esc(c.memo)}</div></div><b class="${c.diff === 0 ? "ok" : "bad"}">${c.diff === 0 ? "일치" : (c.diff > 0 ? "+" : "") + fmt(c.diff)}</b></div>`).join("");
 }
 function drawRoster() {
   $("#rosterEd").innerHTML = R.map((p, i) => `<div class="row" style="margin-bottom:6px"><input value="${esc(p.name)}" placeholder="캐릭명" oninput="R[${i}].name=this.value"><input value="${esc(p.role)}" placeholder="직책" oninput="R[${i}].role=this.value"><button class="sm ghost" onclick="R.splice(${i},1);drawRoster()">✕</button></div>`).join("") || `<div class="sub">명단이 비었어요</div>`;
@@ -494,7 +498,7 @@ async function saveRoster() {
 }
 async function submitCheck() {
   const v = $("#chkQ").value; if (v === "") return toast("보고 수량을 적어 주세요", 1);
-  const r = await write("check", { reported: Number(v), memo: $("#chkM").value.trim() });
+  const r = await write("check", { item: ckItem, reported: Number(v), memo: $("#chkM").value.trim() });
   if (r) { $("#chkQ").value = ""; $("#chkM").value = ""; toast("검산 기록"); }
 }
 
