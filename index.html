@@ -35,7 +35,7 @@ button.ghost{background:transparent;border:1px solid var(--line)}
 .list .it{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
 .list .it:last-child{border-bottom:0}
 .tag{font-size:11px;padding:2px 7px;border-radius:6px;background:var(--chip);color:var(--sub)}
-.t-불출{color:var(--pri)}.t-회수{color:var(--ok)}.t-입고{color:var(--warn)}
+.t-불출{color:var(--pri)}.t-회수{color:var(--ok)}.t-입고{color:var(--warn)}.t-조정{color:#8a7fd6}
 .del{opacity:.4;text-decoration:line-through}
 .num{font-variant-numeric:tabular-nums;font-weight:700}
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
@@ -89,7 +89,7 @@ nav button{font-size:13px}
         <div class="list" id="selList" style="margin-top:6px"></div>
       </div>
       <div class="row" style="margin-top:12px">
-        <div class="grow"><div class="sub" id="qLabel">수량 (전체 적용)</div><input id="q0" type="number" inputmode="numeric" min="0" oninput="applyQ()"></div>
+        <div class="grow"><div class="sub" id="qLabel">수량 (전체 적용)</div><input id="q0" type="number" inputmode="numeric" oninput="applyQ()"></div>
       </div>
       <div class="sub" style="margin-top:12px">날짜</div>
       <input id="wDate" type="date" style="margin-top:4px">
@@ -274,9 +274,9 @@ function renderHome() {
 /* ---------- 입력 ---------- */
 function renderTypes() {
   chips("#itemChips", ITEMS, item, v => { item = v; renderPick(); });
-  $("#typeChips").innerHTML = ["불출", "회수", "입고", "기초재고"].map(t => `<button class="chip ${t === type ? "on" : ""}" onclick="setType('${t}')">${t}</button>`).join("");
-  $("#pickArea").classList.toggle("hide", type === "입고" || type === "기초재고");
-  $("#qLabel").textContent = type === "입고" ? `${item} 입고 수량` : type === "기초재고" ? `현재 실제 보유 ${item} 수량 (앱 계산 재고 ${fmt((D.stock || {})[item])})` : "수량 (전체 적용)";
+  $("#typeChips").innerHTML = ["불출", "회수", "입고", "기초재고", "조정"].map(t => `<button class="chip ${t === type ? "on" : ""}" onclick="setType('${t}')">${t}</button>`).join("");
+  $("#pickArea").classList.toggle("hide", type === "입고" || type === "기초재고" || type === "조정");
+  $("#qLabel").textContent = type === "입고" ? `${item} 입고 수량` : type === "기초재고" ? `현재 실제 보유 ${item} 수량 (앱 계산 재고 ${fmt((D.stock || {})[item])})` : type === "조정" ? `${item} 조정 수량 (음수 가능, 예: -9)` : "수량 (전체 적용)";
 }
 function setType(t) { type = t; renderTypes(); }
 
@@ -319,6 +319,15 @@ async function submitRec() {
     if (diff < 0) return toast("앱 계산 재고가 더 많아요. 기록을 확인해 주세요", 1);
     if (!confirm(`${item} 현재 ${fmt(target)}개 기준\n앱 재고 ${fmt(cur)} → ${fmt(target)}\n입고 ${fmt(diff)}개를 "기초 재고"로 기록할까요?`)) return;
     const r = await write("add", { rows: [{ type: "입고", name: "", qty: diff, memo: memo || "기초 재고 보정", item }], date: $("#wDate").value });
+    if (r) { $("#wDate").value = today(); $("#q0").value = ""; $("#memo").value = ""; renderPick(); toast("저장했어요"); }
+    return;
+  }
+  if (type === "조정") {
+    const qv = Number($("#q0").value);
+    if (!qv) return toast("조정 수량을 적어 주세요 (음수 가능)", 1);
+    if (!memo) return toast("조정 사유를 비고에 적어 주세요", 1);
+    if (!confirm(`${item} 조정 ${qv > 0 ? "+" : ""}${fmt(qv)}개\n사유: ${memo}\n저장할까요?`)) return;
+    const r = await write("add", { rows: [{ type: "조정", name: "", qty: qv, memo, item }], date: $("#wDate").value });
     if (r) { $("#wDate").value = today(); $("#q0").value = ""; $("#memo").value = ""; renderPick(); toast("저장했어요"); }
     return;
   }
@@ -367,12 +376,12 @@ function renderLog() {
     const sum = {};
     L.forEach(r => { if (r.del) return; const s = sum[r.acct] || (sum[r.acct] = { in: 0, out: 0 }); if (r.dir === "수입") s.in += r.amt; else s.out += r.amt; });
     $("#fSum").innerHTML = Object.keys(sum).length ? `<div class="card" style="margin-top:10px">${Object.keys(sum).map(a => { const s = sum[a], u = UNIT[a] || "", d = s.in - s.out; return `<div class="row" style="padding:4px 0"><b style="width:64px">${esc(a)}</b><div class="grow sub">수입 <b class="t-회수">${fmt(s.in)}</b> · 지출 <b class="t-불출">${fmt(s.out)}</b></div><b class="${d >= 0 ? "ok" : "bad"}">${d >= 0 ? "+" : "−"}${fmt(Math.abs(d))}${u}</b></div>`; }).join("")}<div class="sub" style="margin-top:2px">삭제한 기록은 합계에서 제외돼요 · ${L.filter(r => !r.del).length}건</div></div>` : "";
-    $("#logList").innerHTML = L.slice(0, 200).map(r => `<div class="it ${r.del ? "del" : ""}"><div class="grow"><div><b class="${r.dir === "수입" ? "t-회수" : "t-불출"}">${r.dir}</b> ${esc(r.cat)} ${r.target ? `<span class="tag">${esc(r.target)}</span>` : ""} <span class="tag">${esc(r.acct)}</span></div><div class="sub">${esc(r.t)}${r.memo ? " · " + esc(r.memo) : ""}</div></div><div class="num">${r.dir === "수입" ? "+" : "−"}${fmt(r.amt)}</div><button class="sm ghost" onclick="editDate('f','${r.id}','${esc(r.t)}')">날짜</button><button class="sm ghost" onclick="delFund('${r.id}',${r.del})">${r.del ? "복구" : "삭제"}</button></div>`).join("") || `<div class="sub">조건에 맞는 기록이 없어요</div>`;
+    $("#logList").innerHTML = L.slice(0, 200).map(r => `<div class="it ${r.del ? "del" : ""}"><div class="grow"><div><b class="${r.dir === "수입" ? "t-회수" : "t-불출"}">${r.dir}</b> ${esc(r.cat)} ${r.target ? `<span class="tag">${esc(r.target)}</span>` : ""} <span class="tag">${esc(r.acct)}</span></div><div class="sub">${esc(r.t)}${r.memo ? " · " + esc(r.memo) : ""}${r.del && r.delReason ? " · 삭제사유: " + esc(r.delReason) : ""}</div></div><div class="num">${r.dir === "수입" ? "+" : "−"}${fmt(r.amt)}</div><button class="sm ghost" onclick="editDate('f','${r.id}','${esc(r.t)}')">날짜</button><button class="sm ghost" onclick="delFund('${r.id}',${r.del})">${r.del ? "복구" : "삭제"}</button></div>`).join("") || `<div class="sub">조건에 맞는 기록이 없어요</div>`;
     return;
   }
   $("#fSum").innerHTML = "";
   const L = D.recs.slice().reverse().filter(r => (!rItem || r.item === rItem) && (!q || r.name.includes(q) || r.memo.includes(q))).slice(0, 150);
-  $("#logList").innerHTML = L.map(r => `<div class="it ${r.del ? "del" : ""}"><div class="grow"><div><b class="t-${r.type}">${r.type}</b> ${esc(r.name || "")} ${r.role ? `<span class="tag">${esc(r.role)}</span>` : ""} <span class="tag">${esc(r.item)}</span></div><div class="sub">${esc(r.t)}${r.memo ? " · " + esc(r.memo) : ""}</div></div><div class="num">${fmt(r.qty)}</div><button class="sm ghost" onclick="editDate('r','${r.id}','${esc(r.t)}')">날짜</button><button class="sm ghost" onclick="delRec('${r.id}',${r.del})">${r.del ? "복구" : "삭제"}</button></div>`).join("") || `<div class="sub">기록 없음</div>`;
+  $("#logList").innerHTML = L.map(r => `<div class="it ${r.del ? "del" : ""}"><div class="grow"><div><b class="t-${r.type}">${r.type}</b> ${esc(r.name || "")} ${r.role ? `<span class="tag">${esc(r.role)}</span>` : ""} <span class="tag">${esc(r.item)}</span></div><div class="sub">${esc(r.t)}${r.memo ? " · " + esc(r.memo) : ""}${r.del && r.delReason ? " · 삭제사유: " + esc(r.delReason) : ""}</div></div><div class="num">${fmt(r.qty)}</div><button class="sm ghost" onclick="editDate('r','${r.id}','${esc(r.t)}')">날짜</button><button class="sm ghost" onclick="delRec('${r.id}',${r.del})">${r.del ? "복구" : "삭제"}</button></div>`).join("") || `<div class="sub">기록 없음</div>`;
 }
 function editDate(kind, id, cur) {
   const send = async v => { if (/^\d{4}-\d{2}-\d{2}$/.test(v || "") && v !== cur.slice(0, 10)) { const r = await write("edit", { kind, id, date: v }); if (r) toast("날짜 수정"); } };
@@ -383,7 +392,13 @@ function editDate(kind, id, cur) {
   setTimeout(() => i.remove(), 60000);
   try { i.showPicker(); } catch (e) { i.remove(); send(prompt("날짜 (YYYY-MM-DD)", cur.slice(0, 10))); }
 }
-async function delRec(id, undo) { if (!undo && !confirm("이 기록을 삭제할까요? (복구 가능)")) return; await write("del", { id, undo }); }
+async function delRec(id, undo) {
+  if (undo) { await write("del", { id, undo: true }); return; }
+  const reason = prompt("삭제 사유를 적어 주세요"); if (reason === null) return;
+  if (!reason.trim()) return toast("사유를 적어야 삭제돼요", 1);
+  if (!confirm("이 기록을 삭제할까요? (복구 가능)")) return;
+  await write("del", { id, reason: reason.trim() });
+}
 
 
 /* ---------- 자금 ---------- */
@@ -470,7 +485,13 @@ async function submitFund() {
   payload.date = $("#fDate").value; const r = await write("add", payload);
   if (r) { $("#fDate").value = today(); ["#fAmt", "#fTarget", "#fMemo", "#bCash", "#bGold", "#yQty", "#yUnit", "#baseG", "#baseC"].forEach(s => $(s).value = ""); fcastle = ""; renderFund(); toast("저장했어요"); }
 }
-async function delFund(id, undo) { if (!undo && !confirm("이 기록을 삭제할까요? (복구 가능)")) return; await write("fdel", { id, undo }); }
+async function delFund(id, undo) {
+  if (undo) { await write("fdel", { id, undo: true }); return; }
+  const reason = prompt("삭제 사유를 적어 주세요"); if (reason === null) return;
+  if (!reason.trim()) return toast("사유를 적어야 삭제돼요", 1);
+  if (!confirm("이 기록을 삭제할까요? (복구 가능)")) return;
+  await write("fdel", { id, reason: reason.trim() });
+}
 function setLog(m) { logMode = m; $("#lgR").classList.toggle("on", m === "r"); $("#lgF").classList.toggle("on", m === "f"); renderLog(); }
 async function submitFCheck() {
   const v = parseAmt($("#fcQ").value); if (!v) return toast("보고 금액을 적어 주세요", 1);
