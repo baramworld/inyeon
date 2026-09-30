@@ -220,12 +220,18 @@ async function load() {
   } catch (e) { toast("불러오기 실패", 1); }
 }
 
+function devId_() {
+  let id;
+  try { id = localStorage.getItem("dv"); } catch (e) {}
+  if (!id) { id = Math.random().toString(36).slice(2, 10).toUpperCase(); try { localStorage.setItem("dv", id); } catch (e) {} }
+  return id;
+}
 async function write(action, payload) {
   let pw = localStorage.getItem("pw") || prompt("비밀번호");
   if (!pw) return null;
   $("#busy").classList.remove("hide");
   try {
-    const r = await fetch(API, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action, pw, ...payload }) }).then(r => r.json());
+    const r = await fetch(API, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action, pw, dev: devId_(), ...payload }) }).then(r => r.json());
     if (!r.ok) { if (r.error === "pw") { localStorage.removeItem("pw"); toast("비밀번호가 달라요", 1); } else toast(r.error || "실패", 1); return null; }
     localStorage.setItem("pw", pw); D = r.data; renderAll(); return r;
   } catch (e) { toast("저장 실패 (네트워크)", 1); return null; } finally { $("#busy").classList.add("hide"); }
